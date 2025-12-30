@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recetas Fit 🥗</title>
+    <title>Recetas Fit Compartidas 🥗</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,7 +11,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Tesseract.js (OCR para leer imágenes) -->
+    <!-- Tesseract.js (OCR) -->
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 
     <style>
@@ -21,6 +21,7 @@
             background-color: #e0e5ec;
             font-family: 'Nunito', sans-serif;
             color: #4a5568;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* Neumorphism Utilities */
@@ -39,7 +40,7 @@
         .neu-btn {
             background: #e0e5ec;
             box-shadow: 6px 6px 10px 0 rgba(163,177,198, 0.7), -6px -6px 10px 0 rgba(255,255,255, 0.8);
-            border-radius: 50px; /* Pill shape */
+            border-radius: 50px;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
@@ -48,6 +49,8 @@
             cursor: pointer;
             color: #718096;
             font-weight: 700;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .neu-btn:hover {
@@ -62,12 +65,29 @@
             color: #3182ce;
         }
 
-        .neu-btn.danger {
-            color: #f56565;
+        /* Chips */
+        .neu-chip {
+            background: #e0e5ec;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #718096;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            box-shadow: 3px 3px 6px #b8b9be, -3px -3px 6px #ffffff;
         }
-        .neu-btn.danger:hover {
-            color: #c53030;
+
+        .neu-chip.selected {
+            background: #ebf8ff;
+            color: #3182ce;
+            border-color: #3182ce;
+            box-shadow: inset 2px 2px 4px #b8b9be, inset -2px -2px 4px #ffffff;
         }
+
+        .neu-btn.danger { color: #f56565; }
+        .neu-btn.danger:hover { color: #c53030; }
 
         .neu-input {
             background: #e0e5ec;
@@ -80,89 +100,106 @@
             color: #4a5568;
             transition: box-shadow 0.2s ease;
         }
+        .neu-input:focus { box-shadow: inset 3px 3px 6px #b8b9be, inset -3px -3px 6px #ffffff; }
 
-        .neu-input:focus {
-            box-shadow: inset 3px 3px 6px #b8b9be, inset -3px -3px 6px #ffffff;
-        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-in {
-            animation: fadeIn 0.4s ease-out forwards;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.4s ease-out forwards; }
         
-        /* Loading Pulse for OCR */
-        @keyframes pulse-blue {
-            0%, 100% { border-color: #bee3f8; }
-            50% { border-color: #3182ce; }
-        }
-        .ocr-processing {
-            border: 2px solid #3182ce;
-            animation: pulse-blue 1.5s infinite;
-            background-color: #ebf8ff;
+        @keyframes pulse-blue { 0%, 100% { border-color: #bee3f8; } 50% { border-color: #3182ce; } }
+        .ocr-processing { border: 2px solid #3182ce; animation: pulse-blue 1.5s infinite; background-color: #ebf8ff; }
+        
+        /* Error Box */
+        .error-box {
+            background: #fff5f5;
+            border: 2px dashed #fc8181;
+            padding: 20px;
+            border-radius: 20px;
+            color: #c53030;
+            text-align: center;
         }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
 
-    <!-- APP CONTAINER -->
     <div id="app" class="max-w-6xl mx-auto">
         <!-- Header -->
         <header class="mb-8 flex justify-between items-center">
             <div>
                 <h1 class="text-3xl md:text-4xl font-black text-gray-700 tracking-tight">Mis<span class="text-blue-500">Recetas</span>.</h1>
-                <p id="recipe-count" class="text-sm text-gray-500 mt-1">Conectando a Firebase...</p>
+                <p id="recipe-count" class="text-xs md:text-sm text-gray-500 mt-1 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" id="status-dot"></span>
+                    <span id="status-text">Conectando a Firebase...</span>
+                </p>
             </div>
-            <div class="neu-btn w-12 h-12 rounded-full text-blue-500">
+            <div class="neu-btn w-12 h-12 rounded-full text-blue-500 relative">
                 <i data-lucide="chef-hat"></i>
+                <div class="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-[#e0e5ec]" title="En línea"></div>
             </div>
         </header>
 
-        <!-- Main View: Filters & Grid -->
+        <!-- Permissions Error View (Hidden by default) -->
+        <div id="permissions-error" class="hidden mb-8 animate-in">
+            <div class="error-box shadow-xl">
+                <div class="flex justify-center mb-4">
+                    <i data-lucide="lock" class="w-12 h-12 text-red-400"></i>
+                </div>
+                <h2 class="text-xl font-bold mb-2">Acceso Bloqueado por Firebase</h2>
+                <p class="text-sm mb-4">Para compartir recetas, necesitas abrir los permisos en tu consola.</p>
+                
+                <div class="bg-gray-800 text-gray-200 text-xs text-left p-4 rounded-xl overflow-x-auto mb-4 font-mono">
+                    <p class="opacity-50">// Copia y pega esto en Firestore Database > Reglas</p>
+                    <p class="text-green-400">rules_version = '2';</p>
+                    <p class="text-purple-400">service cloud.firestore {</p>
+                    <p class="pl-4">match /databases/{database}/documents {</p>
+                    <p class="pl-8 text-yellow-300">match /recetas_compartidas/{document=**} {</p>
+                    <p class="pl-12 text-blue-300">allow read, write: if true;</p>
+                    <p class="pl-8 text-yellow-300">}</p>
+                    <p class="pl-4">}</p>
+                    <p class="text-purple-400">}</p>
+                </div>
+                
+                <button onclick="location.reload()" class="bg-red-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-red-600 transition-colors">
+                    Ya lo hice, recargar página
+                </button>
+            </div>
+        </div>
+
+        <!-- Main View -->
         <div id="main-view">
             <!-- Search & Sort -->
             <section class="mb-8 space-y-5">
                 <div class="flex gap-4">
                     <div class="relative flex-1">
-                        <input type="text" id="search-input" placeholder="Buscar (ej. Pizza, Pollo...)" class="neu-input">
+                        <input type="text" id="search-input" placeholder="Buscar receta..." class="neu-input">
                         <i data-lucide="search" class="absolute right-4 top-3 text-gray-400 w-5 h-5"></i>
                     </div>
                     
-                    <!-- Sort Dropdown Logic handled via JS -->
                     <div class="relative">
-                        <button id="btn-sort-toggle" class="neu-btn h-full px-4 text-gray-600">
+                        <button type="button" id="btn-sort-toggle" class="neu-btn h-full px-4 text-gray-600">
                             <i data-lucide="list-filter" class="w-5 h-5"></i>
                         </button>
                         <div id="sort-menu" class="hidden absolute right-0 mt-3 w-56 neu-flat p-2 z-20 bg-[#e0e5ec] text-sm">
-                            <button onclick="setSort('default')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Por Defecto</button>
-                            <button onclick="setSort('minCal')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Menos Calorías</button>
-                            <button onclick="setSort('maxProt')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Más Proteína</button>
+                            <button type="button" onclick="setSort('default')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Por Defecto</button>
+                            <button type="button" onclick="setSort('minCal')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Menos Calorías</button>
+                            <button type="button" onclick="setSort('maxProt')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Más Proteína</button>
                             <div class="h-px bg-gray-300 my-1"></div>
-                            <button onclick="setSort('minCarbs')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Menos Hidratos</button>
+                            <button type="button" onclick="setSort('minCarbs')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Menos Hidratos</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Categories -->
                 <div id="categories-container" class="flex overflow-x-auto gap-3 pb-4 scrollbar-hide snap-x">
-                    <!-- Buttons injected by JS -->
+                    <!-- Buttons injected via JS -->
                 </div>
             </section>
 
             <!-- Recipe Grid -->
             <section id="recipe-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
-                <!-- Cards injected by JS -->
+                <!-- Cards injected via JS -->
             </section>
             
             <!-- Empty State -->
@@ -170,23 +207,23 @@
                 <div class="neu-pressed p-6 rounded-full mb-4">
                     <i data-lucide="plus" class="w-12 h-12 text-gray-400"></i>
                 </div>
-                <p class="text-xl font-bold text-gray-500">Recetario Vacío</p>
-                <p class="text-sm text-gray-400">Usa el botón + para añadir a la nube.</p>
+                <p class="text-xl font-bold text-gray-500">Recetario Compartido Vacío</p>
+                <p class="text-sm text-gray-400">Añade la primera receta para ti y tu pareja.</p>
             </div>
         </div>
 
-        <!-- Detail View (Hidden by default) -->
+        <!-- Detail View -->
         <div id="detail-view" class="hidden animate-in pb-20">
             <div class="flex justify-between items-center mb-6">
-                <button onclick="closeDetail()" class="neu-btn w-12 h-12 rounded-full">
+                <button type="button" onclick="closeDetail()" class="neu-btn w-12 h-12 rounded-full">
                     <i data-lucide="chevron-left"></i>
                 </button>
                 <span class="text-xs font-bold tracking-widest uppercase text-gray-400">Detalle</span>
                 <div class="flex gap-3">
-                    <button id="btn-edit-recipe" class="neu-btn w-12 h-12 rounded-full text-blue-400">
+                    <button type="button" id="btn-edit-recipe" class="neu-btn w-12 h-12 rounded-full text-blue-400">
                         <i data-lucide="edit-2"></i>
                     </button>
-                    <button id="btn-delete-recipe" class="neu-btn w-12 h-12 rounded-full text-red-400 danger">
+                    <button type="button" id="btn-delete-recipe" class="neu-btn w-12 h-12 rounded-full text-red-400 danger">
                         <i data-lucide="trash-2"></i>
                     </button>
                 </div>
@@ -194,15 +231,13 @@
 
             <div class="neu-flat p-0 overflow-hidden mb-8">
                 <!-- Cover -->
-                <div id="detail-cover" class="h-64 w-full bg-gray-200 flex items-center justify-center relative overflow-hidden">
-                    <!-- Img or Icon injected here -->
-                </div>
+                <div id="detail-cover" class="h-64 w-full bg-gray-200 flex items-center justify-center relative overflow-hidden"></div>
                 
                 <div class="p-6 md:p-8">
                     <h1 id="detail-title" class="text-3xl font-bold text-gray-800 mb-2 leading-tight"></h1>
-                    <div id="detail-tags" class="flex gap-2 mb-6 flex-wrap"></div>
-
-                    <!-- Macros -->
+                    <!-- Category Chips in Detail -->
+                    <div id="detail-categories" class="flex gap-2 mb-4 flex-wrap"></div>
+                    
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                         <div class="neu-pressed flex flex-col items-center p-3 rounded-2xl">
                             <i data-lucide="flame" class="text-orange-500 mb-1 w-5 h-5"></i>
@@ -244,20 +279,20 @@
             </div>
         </div>
 
-        <!-- FAB Add Button -->
-        <button onclick="openForm()" class="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full bg-[#e0e5ec] text-blue-500 shadow-[6px_6px_12px_#b8b9be,-6px_-6px_12px_#ffffff] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
+        <!-- FAB -->
+        <button type="button" onclick="openForm()" class="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full bg-[#e0e5ec] text-blue-500 shadow-[6px_6px_12px_#b8b9be,-6px_-6px_12px_#ffffff] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
             <i data-lucide="plus" class="w-8 h-8 stroke-[3]"></i>
         </button>
 
     </div>
 
     <!-- MODAL FORM -->
-    <div id="modal-form" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#e0e5ec]/80 backdrop-blur-sm animate-in">
+    <div id="modal-form" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#e0e5ec]/90 backdrop-blur-sm animate-in" style="-webkit-backdrop-filter: blur(4px);">
         <div class="neu-flat w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-            <h2 id="form-title" class="text-2xl font-bold text-gray-700 mb-6">Nueva Receta</h2>
+            <h2 id="form-title" class="text-2xl font-bold text-gray-700 mb-4">Nueva Receta</h2>
             
             <div class="space-y-4">
-                <!-- Magic Paste Area -->
+                <!-- Magic Paste -->
                 <div id="magic-container" class="bg-blue-50 p-3 rounded-xl border border-blue-100 transition-colors">
                     <div class="flex justify-between items-center mb-2">
                         <div class="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-wider">
@@ -265,82 +300,77 @@
                         </div>
                         <span id="ocr-status" class="text-[10px] text-blue-400 font-semibold hidden">Analizando...</span>
                     </div>
-                    <textarea id="magic-input" class="w-full bg-white/50 rounded-lg p-2 text-xs text-gray-600 outline-none border border-blue-100 placeholder-blue-300 transition-colors" rows="2" placeholder="✨ Pega texto o UNA FOTO de la receta aquí (Ctrl+V) para autocompletar..."></textarea>
+                    <textarea id="magic-input" class="w-full bg-white/50 rounded-lg p-2 text-xs text-gray-600 outline-none border border-blue-100 placeholder-blue-300 transition-colors" rows="2" placeholder="✨ Pega texto o FOTO (Ctrl+V) aquí..."></textarea>
                 </div>
 
                 <div>
                     <label class="text-xs font-bold text-gray-500 ml-2">Nombre</label>
-                    <input type="text" id="inp-title" class="neu-input" placeholder="Ej. Pizza Fit">
+                    <input type="text" id="inp-title" class="neu-input" placeholder="Ej. Hamburguesa Permitida">
                 </div>
 
                 <!-- Image Handling -->
                 <div class="p-1">
-                    <label class="text-xs font-bold text-gray-500 ml-2 mb-2 block">Imagen (Emoji o URL)</label>
+                    <label class="text-xs font-bold text-gray-500 ml-2 mb-2 block">Imagen</label>
                     <div class="flex gap-2 mb-2">
                         <button type="button" onclick="setImageMode('emoji')" id="btn-mode-emoji" class="neu-btn px-4 py-2 text-xs flex-1 active">Emoji</button>
-                        <button type="button" onclick="setImageMode('url')" id="btn-mode-url" class="neu-btn px-4 py-2 text-xs flex-1">Foto URL</button>
+                        <button type="button" onclick="setImageMode('url')" id="btn-mode-url" class="neu-btn px-4 py-2 text-xs flex-1">Foto/URL</button>
                     </div>
                     <div id="box-emoji">
-                        <input type="text" id="inp-icon" class="neu-input text-center text-2xl" placeholder="🍕">
+                        <input type="text" id="inp-icon" class="neu-input text-center text-2xl" placeholder="🍔">
                     </div>
                     <div id="box-url" class="hidden space-y-2">
-                        <input type="text" id="inp-image-url" class="neu-input text-xs" placeholder="Pega URL o Ctrl+V para pegar imagen">
+                        <input type="text" id="inp-image-url" class="neu-input text-xs" placeholder="URL o Pegar (Ctrl+V)">
                         <div id="preview-container" class="hidden h-32 w-full rounded-xl overflow-hidden shadow-inner relative group bg-gray-200">
                             <img id="img-preview" src="" class="w-full h-full object-cover">
-                            <button onclick="clearImage()" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            <button type="button" onclick="clearImage()" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><i data-lucide="x" class="w-3 h-3"></i></button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- MULTI CATEGORY SELECTOR -->
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-2 mb-2 block">Categorías (Selecciona varias)</label>
+                    <div id="category-chips-container" class="flex flex-wrap gap-2">
+                        <!-- Chips generated by JS -->
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-bold text-gray-500 ml-2">Categoría</label>
-                        <select id="inp-category" class="neu-input">
-                            <option value="Desayuno">Desayuno</option>
-                            <option value="Comida">Comida</option>
-                            <option value="Cena">Cena</option>
-                            <option value="Guarnición">Guarnición</option>
-                            <option value="Snack">Snack</option>
-                            <option value="Bebida">Bebida</option>
-                            <option value="Postre">Postre</option>
-                        </select>
-                    </div>
-                    <div>
                         <label class="text-xs font-bold text-gray-500 ml-2">Calorías</label>
-                        <input type="text" id="inp-cal" class="neu-input" placeholder="Ej. 200">
+                        <input type="text" id="inp-cal" class="neu-input" placeholder="200">
                     </div>
-                </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                    <input type="text" id="inp-prot" class="neu-input text-center text-xs" placeholder="Prot (g)">
-                    <input type="text" id="inp-carb" class="neu-input text-center text-xs" placeholder="Carb (g)">
-                    <input type="text" id="inp-fat" class="neu-input text-center text-xs" placeholder="Grasa (g)">
+                    <div class="grid grid-cols-3 gap-1 pt-6">
+                        <input type="text" id="inp-prot" class="neu-input text-center text-[10px] px-1" placeholder="Prot">
+                        <input type="text" id="inp-carb" class="neu-input text-center text-[10px] px-1" placeholder="Carb">
+                        <input type="text" id="inp-fat" class="neu-input text-center text-[10px] px-1" placeholder="Grasa">
+                    </div>
                 </div>
 
                 <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">Ingredientes (uno por línea)</label>
-                    <textarea id="inp-ingredients" class="neu-input" rows="4"></textarea>
+                    <label class="text-xs font-bold text-gray-500 ml-2">Ingredientes</label>
+                    <textarea id="inp-ingredients" class="neu-input" rows="3"></textarea>
                 </div>
                 <div>
                     <label class="text-xs font-bold text-gray-500 ml-2">Instrucciones</label>
-                    <textarea id="inp-instructions" class="neu-input" rows="4"></textarea>
+                    <textarea id="inp-instructions" class="neu-input" rows="3"></textarea>
                 </div>
 
-                <div class="flex gap-4 pt-4">
-                    <button onclick="closeForm()" class="neu-btn flex-1 text-red-400 py-3">Cancelar</button>
-                    <button onclick="saveRecipe()" id="btn-save" class="neu-btn flex-1 text-blue-500 py-3">Guardar</button>
+                <div class="flex gap-4 pt-2">
+                    <button type="button" onclick="closeForm()" class="neu-btn flex-1 text-red-400 py-3">Cancelar</button>
+                    <button type="button" onclick="saveRecipe()" id="btn-save" class="neu-btn flex-1 text-blue-500 py-3">Guardar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPTS FIREBASE + LOGIC -->
+    <!-- SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- 1. CONFIGURACIÓN PERSONAL DEL USUARIO ---
+        // --- CONFIGURACIÓN PERSONAL DEL USUARIO ---
         const firebaseConfig = {
             apiKey: "AIzaSyAfn1RVDfrbNMxVRgOcgHu-8QMmGAhugik",
             authDomain: "comidassaludables.firebaseapp.com",
@@ -362,107 +392,110 @@
         let activeCategory = 'Todos';
         let sortMode = 'default';
         let searchTerm = '';
+        let selectedFormCategories = [];
 
-        // --- 2. AUTHENTICATION ---
-        signInAnonymously(auth).catch((error) => {
+        // All available categories including Permitidos
+        const allCategories = ['Desayuno', 'Comida', 'Cena', 'Guarnición', 'Snack', 'Bebida', 'Postre', 'Permitidos'];
+
+        // --- AUTH ---
+        // We handle Auth silently
+        signInAnonymously(auth).then(() => {
+            console.log("Auth started");
+        }).catch((error) => {
             console.error("Auth Error:", error);
-            alert("Error de autenticación: " + error.message);
+            updateStatus("Error de Autenticación", "red");
         });
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                console.log("Logged in as:", user.uid);
+                updateStatus("En línea", "green");
                 subscribeToRecipes();
+            } else {
+                updateStatus("Desconectado", "red");
             }
         });
 
-        // --- 3. FIRESTORE LOGIC ---
+        function updateStatus(text, color) {
+            document.getElementById('status-text').innerText = text;
+            const dot = document.getElementById('status-dot');
+            dot.classList.remove('bg-yellow-400', 'bg-green-400', 'bg-red-400', 'animate-pulse');
+            dot.classList.add(`bg-${color}-400`);
+            if(color==='yellow') dot.classList.add('animate-pulse');
+        }
+
+        // --- FIREBASE (MODO COMPARTIDO) ---
         function subscribeToRecipes() {
             if (!currentUser) return;
-            const recipesRef = collection(db, 'users', currentUser.uid, 'recipes');
+            // RUTA COMPARTIDA PÚBLICA (Requiere reglas abiertas)
+            const recipesRef = collection(db, 'recetas_compartidas');
 
             onSnapshot(recipesRef, (snapshot) => {
-                recipes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                recipes = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // Compatibilidad: convertir string a array si es receta vieja
+                    let cats = data.categories || [];
+                    if (!data.categories && data.category) cats = [data.category];
+                    return { id: doc.id, ...data, categories: cats };
+                });
+                // Si la conexión fue exitosa, ocultar error si estaba visible
+                document.getElementById('permissions-error').classList.add('hidden');
+                document.getElementById('main-view').classList.remove('hidden');
                 renderApp();
             }, (error) => {
-                console.error("Firestore Error:", error);
+                console.error("Error permisos:", error);
                 if (error.code === 'permission-denied') {
-                    alert("⚠️ Error de permisos.\n\nVe a tu Consola Firebase > Firestore > Reglas y pega esto:\n\nallow read, write: if request.auth != null;");
+                    document.getElementById('main-view').classList.add('hidden');
+                    document.getElementById('permissions-error').classList.remove('hidden');
+                    updateStatus("Error de Permisos", "red");
                 }
             });
         }
 
-        window.saveRecipe = async () => {
-            const btn = document.getElementById('btn-save');
-            btn.innerText = "Guardando...";
+        // --- UI RENDER ---
+        function renderCategories() {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = '';
             
-            const recipeData = {
-                title: document.getElementById('inp-title').value || "Receta sin nombre",
-                category: document.getElementById('inp-category').value,
-                calories: document.getElementById('inp-cal').value,
-                icon: document.getElementById('inp-icon').value,
-                imageType: document.getElementById('btn-mode-url').classList.contains('active') ? 'url' : 'emoji',
-                imageUrl: document.getElementById('inp-image-url').value,
-                imageColor: "from-blue-200 to-indigo-200", 
-                tags: [],
-                nutrition: {
-                    protein: document.getElementById('inp-prot').value,
-                    carbs: document.getElementById('inp-carb').value,
-                    fat: document.getElementById('inp-fat').value,
-                },
-                ingredients: document.getElementById('inp-ingredients').value.split('\n').filter(Boolean),
-                instructions: document.getElementById('inp-instructions').value.split('\n').filter(Boolean),
-                createdAt: Date.now()
-            };
-
-            try {
-                const recipesRef = collection(db, 'users', currentUser.uid, 'recipes');
+            const tabs = ['Todos', 'Top Fit', ...allCategories];
+            
+            tabs.forEach(cat => {
+                const btn = document.createElement('button');
+                const isActive = activeCategory === cat;
+                const isPermitido = cat === 'Permitidos';
                 
-                if (editingId) {
-                    await updateDoc(doc(recipesRef, editingId), recipeData);
-                } else {
-                    await addDoc(recipesRef, recipeData);
-                }
-                closeForm();
-            } catch (error) {
-                console.error("Save Error:", error);
-                alert("Error al guardar: " + error.message);
-            } finally {
-                btn.innerText = "Guardar";
-            }
-        };
+                let iconHtml = '';
+                if(cat==='Top Fit') iconHtml = '<i data-lucide="trophy" class="w-4 h-4"></i>';
+                if(cat==='Permitidos') iconHtml = '<i data-lucide="star" class="w-4 h-4"></i>';
 
-        window.deleteCurrentRecipe = async () => {
-            if (!editingId) return;
-            if(!confirm("¿Borrar definitivamente?")) return;
-            
-            try {
-                const docRef = doc(db, 'users', currentUser.uid, 'recipes', editingId);
-                await deleteDoc(docRef);
-                closeDetail();
-            } catch (e) {
-                console.error(e);
-                alert("Error al borrar: " + e.message);
-            }
-        };
+                btn.className = `min-w-[100px] snap-start px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-sm whitespace-nowrap border-none cursor-pointer ${
+                    isActive 
+                    ? (isPermitido ? 'bg-yellow-100 text-yellow-600 shadow-[inset_4px_4px_8px_#d69e2e,inset_-4px_-4px_8px_#ffffff]' : 'bg-[#e0e5ec] text-blue-500 shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff]') 
+                    : 'bg-[#e0e5ec] text-gray-600 shadow-[5px_5px_10px_#b8b9be,-5px_-5px_10px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff]'
+                }`;
+                btn.innerHTML = `${iconHtml}${cat}`;
+                btn.onclick = () => { activeCategory = cat; renderApp(); renderCategories(); };
+                container.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
 
-        // --- 4. UI LOGIC (Render & Events) ---
-        
         function renderApp() {
-            document.getElementById('recipe-count').innerText = `${recipes.length} Recetas en Nube`;
+            document.getElementById('recipe-count').innerText = `${recipes.length} Recetas Compartidas`;
 
             let filtered = recipes.filter(r => {
                 const matchSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
-                if (activeCategory === 'Top Fit') return true;
+                if (activeCategory === 'Top Fit') return true; 
                 if (activeCategory === 'Todos') return matchSearch;
-                return r.category === activeCategory && matchSearch;
+                
+                const hasCat = r.categories && r.categories.includes(activeCategory);
+                return hasCat && matchSearch;
             });
 
             const getVal = (v) => parseFloat(v) || 0;
             if (sortMode === 'minCal') filtered.sort((a,b) => getVal(a.calories) - getVal(b.calories));
-            else if (sortMode === 'maxProt') filtered.sort((a,b) => getVal(b.nutrition.protein) - getVal(a.nutrition.protein));
-            else if (sortMode === 'minCarbs') filtered.sort((a,b) => getVal(a.nutrition.carbs) - getVal(b.nutrition.carbs));
+            else if (sortMode === 'maxProt') filtered.sort((a,b) => getVal(b.nutrition?.protein) - getVal(a.nutrition?.protein));
+            else if (sortMode === 'minCarbs') filtered.sort((a,b) => getVal(a.nutrition?.carbs) - getVal(b.nutrition?.carbs));
 
             const grid = document.getElementById('recipe-grid');
             grid.innerHTML = '';
@@ -487,14 +520,16 @@
                             imgContent = `<img src="${r.imageUrl}" class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700">`;
                         }
 
+                        const catString = (r.categories || []).join(' • ');
+
                         card.innerHTML = `
-                            <div class="h-40 rounded-2xl bg-gradient-to-br ${r.imageColor} flex items-center justify-center mb-4 overflow-hidden shadow-inner">
+                            <div class="h-40 rounded-2xl bg-gradient-to-br ${r.imageColor || 'from-gray-100 to-gray-200'} flex items-center justify-center mb-4 overflow-hidden shadow-inner">
                                 ${imgContent}
                             </div>
                             <div class="flex justify-between items-start mb-2">
-                                <span class="text-[10px] font-bold text-blue-500 uppercase tracking-wider">${r.category}</span>
+                                <span class="text-[10px] font-bold text-blue-500 uppercase tracking-wider truncate max-w-[70%]">${catString}</span>
                                 <div class="flex items-center text-orange-500 text-xs font-bold gap-1">
-                                    <i data-lucide="flame" class="w-3 h-3 fill-current"></i> ${r.calories}
+                                    <i data-lucide="flame" class="w-3 h-3 fill-current"></i> ${r.calories || 0}
                                 </div>
                             </div>
                             <h3 class="text-lg font-bold text-gray-800 leading-tight">${r.title}</h3>
@@ -521,94 +556,27 @@
                             <div onclick="window.openDetailById('${r.id}')" class="min-w-[180px] neu-flat p-4 rounded-2xl cursor-pointer flex-shrink-0">
                                 <div class="text-4xl mb-2 text-center">${r.imageType === 'url' ? '📷' : r.icon}</div>
                                 <h4 class="font-bold text-gray-700 text-sm truncate">${r.title}</h4>
-                                <div class="text-xs font-bold mt-1 ${color}">${r.category}</div>
+                                <div class="text-xs font-bold mt-1 ${color}">${(r.categories||[]).slice(0,2).join(', ')}</div>
                             </div>
                         `).join('')}
                     </div>
                 </div>
             `;
-
-            container.innerHTML = sectionHTML("Ligero & Rico", lowCal, "leaf", "text-green-500") + 
-                                  sectionHTML("Protein Power", highProt, "activity", "text-blue-500");
+            container.innerHTML = sectionHTML("Ligero", lowCal, "leaf", "text-green-500") + sectionHTML("Proteico", highProt, "activity", "text-blue-500");
         }
 
-        // --- 5. CATEGORY TABS ---
-        const categories = ['Todos', 'Top Fit', 'Desayuno', 'Comida', 'Cena', 'Guarnición', 'Snack', 'Bebida', 'Postre'];
-        const catContainer = document.getElementById('categories-container');
-        
-        function renderCategories() {
-            catContainer.innerHTML = '';
-            categories.forEach(cat => {
-                const btn = document.createElement('button');
-                const isActive = activeCategory === cat;
-                btn.className = `min-w-[100px] snap-start px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-sm whitespace-nowrap border-none cursor-pointer ${
-                    isActive 
-                    ? 'bg-[#e0e5ec] text-blue-500 shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff]' 
-                    : 'bg-[#e0e5ec] text-gray-600 shadow-[5px_5px_10px_#b8b9be,-5px_-5px_10px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff]'
-                }`;
-                btn.innerText = cat;
-                btn.onclick = () => { activeCategory = cat; renderApp(); renderCategories(); };
-                catContainer.appendChild(btn);
-            });
-        }
-        renderCategories();
-
-        // --- 6. DETAILS & FORMS ---
-        window.openDetail = (r) => {
-            editingId = r.id; 
-            document.getElementById('main-view').classList.add('hidden');
-            document.getElementById('detail-view').classList.remove('hidden');
-            
-            document.getElementById('detail-title').innerText = r.title;
-            document.getElementById('detail-cal').innerText = r.calories;
-            document.getElementById('detail-prot').innerText = r.nutrition?.protein || '-';
-            document.getElementById('detail-carb').innerText = r.nutrition?.carbs || '-';
-            document.getElementById('detail-fat').innerText = r.nutrition?.fat || '-';
-
-            const cover = document.getElementById('detail-cover');
-            cover.className = `h-64 w-full bg-gradient-to-r ${r.imageColor || 'from-gray-200 to-gray-300'} flex items-center justify-center relative overflow-hidden`;
-            if (r.imageType === 'url' && r.imageUrl) {
-                cover.innerHTML = `<img src="${r.imageUrl}" class="w-full h-full object-cover">`;
-            } else {
-                cover.innerHTML = `<span class="text-9xl drop-shadow-md cursor-default">${r.icon || '🍲'}</span>`;
-            }
-
-            const ul = document.getElementById('detail-ingredients');
-            ul.innerHTML = (r.ingredients || []).map(i => `<li class="flex gap-3"><span class="w-2 h-2 mt-1.5 rounded-full bg-blue-400"></span>${i}</li>`).join('');
-            
-            const divInst = document.getElementById('detail-instructions');
-            divInst.innerHTML = (r.instructions || []).map((s, i) => `<div class="flex gap-4"><div class="flex-shrink-0 w-6 h-6 rounded-full bg-[#e0e5ec] shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] flex items-center justify-center font-bold text-xs text-emerald-600">${i+1}</div><p>${s}</p></div>`).join('');
-
-            document.getElementById('btn-edit-recipe').onclick = () => { openForm(r); };
-            document.getElementById('btn-delete-recipe').onclick = deleteCurrentRecipe;
-            
-            lucide.createIcons();
-        };
-
-        window.openDetailById = (id) => {
-            const r = recipes.find(item => item.id === id);
-            if(r) openDetail(r);
-        };
-
-        window.closeDetail = () => {
-            document.getElementById('detail-view').classList.add('hidden');
-            document.getElementById('main-view').classList.remove('hidden');
-            editingId = null;
-        };
-
+        // --- FORM LOGIC ---
         window.openForm = (r = null) => {
             const modal = document.getElementById('modal-form');
             modal.classList.remove('hidden');
             editingId = r ? r.id : null;
             document.getElementById('form-title').innerText = r ? 'Editar Receta' : 'Nueva Receta';
 
-            // Reset magic UI
             document.getElementById('magic-container').classList.remove('ocr-processing');
             document.getElementById('ocr-status').classList.add('hidden');
             document.getElementById('magic-input').value = "";
 
             document.getElementById('inp-title').value = r?.title || '';
-            document.getElementById('inp-category').value = r?.category || 'Comida';
             document.getElementById('inp-cal').value = r?.calories || '';
             document.getElementById('inp-icon').value = r?.icon || '🥗';
             document.getElementById('inp-image-url').value = r?.imageUrl || '';
@@ -627,142 +595,197 @@
             } else {
                 document.getElementById('preview-container').classList.add('hidden');
             }
+
+            selectedFormCategories = r?.categories ? [...r.categories] : ['Comida'];
+            renderFormCategories();
         };
 
-        window.closeForm = () => {
-            document.getElementById('modal-form').classList.add('hidden');
+        function renderFormCategories() {
+            const container = document.getElementById('category-chips-container');
+            container.innerHTML = '';
+            allCategories.forEach(cat => {
+                const chip = document.createElement('div');
+                const isSelected = selectedFormCategories.includes(cat);
+                chip.className = `neu-chip ${isSelected ? 'selected' : ''}`;
+                chip.innerText = cat;
+                chip.onclick = () => {
+                    if (isSelected) selectedFormCategories = selectedFormCategories.filter(c => c !== cat);
+                    else selectedFormCategories.push(cat);
+                    renderFormCategories();
+                };
+                container.appendChild(chip);
+            });
+        }
+
+        window.saveRecipe = async () => {
+            const btn = document.getElementById('btn-save');
+            btn.innerText = "Guardando...";
+            
+            if(selectedFormCategories.length === 0) selectedFormCategories.push('Comida');
+
+            const recipeData = {
+                title: document.getElementById('inp-title').value || "Sin nombre",
+                categories: selectedFormCategories, 
+                calories: document.getElementById('inp-cal').value,
+                icon: document.getElementById('inp-icon').value,
+                imageType: document.getElementById('btn-mode-url').classList.contains('active') ? 'url' : 'emoji',
+                imageUrl: document.getElementById('inp-image-url').value,
+                imageColor: "from-blue-200 to-indigo-200", 
+                nutrition: {
+                    protein: document.getElementById('inp-prot').value,
+                    carbs: document.getElementById('inp-carb').value,
+                    fat: document.getElementById('inp-fat').value,
+                },
+                ingredients: document.getElementById('inp-ingredients').value.split('\n').filter(Boolean),
+                instructions: document.getElementById('inp-instructions').value.split('\n').filter(Boolean),
+                createdAt: Date.now()
+            };
+
+            try {
+                // RUTA COMPARTIDA
+                const recipesRef = collection(db, 'recetas_compartidas');
+                if (editingId) await updateDoc(doc(recipesRef, editingId), recipeData);
+                else await addDoc(recipesRef, recipeData);
+                window.closeForm();
+            } catch (error) {
+                console.error(error);
+                alert("Error guardando: " + error.code);
+            } finally {
+                btn.innerText = "Guardar";
+            }
         };
 
+        // --- HELPERS ---
+        window.closeForm = () => document.getElementById('modal-form').classList.add('hidden');
+        window.openDetailById = (id) => { const r = recipes.find(item => item.id === id); if(r) openDetail(r); };
+        window.deleteCurrentRecipe = async () => {
+            if(!editingId || !confirm("¿Borrar para ambos?")) return;
+            try { await deleteDoc(doc(db, 'recetas_compartidas', editingId)); window.closeDetail(); } catch(e){ alert(e.message); }
+        };
+        window.closeDetail = () => { document.getElementById('detail-view').classList.add('hidden'); document.getElementById('main-view').classList.remove('hidden'); editingId=null; };
+        
+        window.openDetail = (r) => {
+            editingId = r.id; 
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.remove('hidden');
+            document.getElementById('detail-title').innerText = r.title;
+            document.getElementById('detail-cal').innerText = r.calories;
+            document.getElementById('detail-prot').innerText = r.nutrition?.protein || '-';
+            document.getElementById('detail-carb').innerText = r.nutrition?.carbs || '-';
+            document.getElementById('detail-fat').innerText = r.nutrition?.fat || '-';
+            
+            const catContainer = document.getElementById('detail-categories');
+            catContainer.innerHTML = '';
+            (r.categories || []).forEach(cat => {
+                const badge = document.createElement('span');
+                badge.className = "text-[10px] md:text-xs font-bold px-2 py-1 rounded-full bg-[#e0e5ec] shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] text-blue-500";
+                if(cat === 'Permitidos') badge.className = badge.className.replace('text-blue-500', 'text-yellow-600');
+                badge.innerText = cat;
+                catContainer.appendChild(badge);
+            });
+
+            const cover = document.getElementById('detail-cover');
+            cover.className = `h-64 w-full bg-gradient-to-r ${r.imageColor||'from-gray-200 to-gray-300'} flex items-center justify-center relative overflow-hidden`;
+            if(r.imageType === 'url' && r.imageUrl) cover.innerHTML = `<img src="${r.imageUrl}" class="w-full h-full object-cover">`;
+            else cover.innerHTML = `<span class="text-9xl drop-shadow-md cursor-default">${r.icon||'🍲'}</span>`;
+
+            document.getElementById('detail-ingredients').innerHTML = (r.ingredients||[]).map(i=>`<li class="flex gap-3"><span class="w-2 h-2 mt-1.5 rounded-full bg-blue-400"></span>${i}</li>`).join('');
+            document.getElementById('detail-instructions').innerHTML = (r.instructions||[]).map((s,i)=>`<div class="flex gap-4"><div class="flex-shrink-0 w-6 h-6 rounded-full bg-[#e0e5ec] shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] flex items-center justify-center font-bold text-xs text-emerald-600">${i+1}</div><p>${s}</p></div>`).join('');
+            
+            document.getElementById('btn-edit-recipe').onclick = () => openForm(r);
+            document.getElementById('btn-delete-recipe').onclick = deleteCurrentRecipe;
+            lucide.createIcons();
+        };
+
+        // --- GLOBAL HANDLERS ---
         window.setImageMode = (mode) => {
             const btnEmoji = document.getElementById('btn-mode-emoji');
             const btnUrl = document.getElementById('btn-mode-url');
-            const boxEmoji = document.getElementById('box-emoji');
-            const boxUrl = document.getElementById('box-url');
-
-            if (mode === 'emoji') {
-                btnEmoji.classList.add('active', 'text-blue-500', 'shadow-inner');
-                btnUrl.classList.remove('active', 'text-blue-500', 'shadow-inner');
-                boxEmoji.classList.remove('hidden');
-                boxUrl.classList.add('hidden');
+            if(mode === 'emoji') {
+                btnEmoji.classList.add('active','text-blue-500','shadow-inner'); btnUrl.classList.remove('active','text-blue-500','shadow-inner');
+                document.getElementById('box-emoji').classList.remove('hidden'); document.getElementById('box-url').classList.add('hidden');
             } else {
-                btnUrl.classList.add('active', 'text-blue-500', 'shadow-inner');
-                btnEmoji.classList.remove('active', 'text-blue-500', 'shadow-inner');
-                boxUrl.classList.remove('hidden');
-                boxEmoji.classList.add('hidden');
+                btnUrl.classList.add('active','text-blue-500','shadow-inner'); btnEmoji.classList.remove('active','text-blue-500','shadow-inner');
+                document.getElementById('box-url').classList.remove('hidden'); document.getElementById('box-emoji').classList.add('hidden');
             }
         };
-
-        window.clearImage = () => {
-            document.getElementById('inp-image-url').value = '';
-            document.getElementById('preview-container').classList.add('hidden');
-        };
-
-        window.setSort = (mode) => {
-            sortMode = mode;
-            document.getElementById('sort-menu').classList.add('hidden');
-            renderApp();
-        };
-
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            searchTerm = e.target.value;
-            renderApp();
-        });
-
-        document.getElementById('btn-sort-toggle').onclick = () => {
-            document.getElementById('sort-menu').classList.toggle('hidden');
-        };
-
-        // --- MAGIC PASTE LOGIC (TEXT + OCR) ---
+        window.clearImage = () => { document.getElementById('inp-image-url').value = ''; document.getElementById('preview-container').classList.add('hidden'); };
+        window.setSort = (m) => { sortMode = m; document.getElementById('sort-menu').classList.add('hidden'); renderApp(); };
         
-        function processTextToRecipe(text) {
-            const lines = text.split('\n').filter(l => l.trim() !== '');
-            let ings = [], inst = [];
-            let section = 0; // 0: unknown, 1: ing, 2: inst
-            
-            lines.forEach(line => {
-                const lower = line.toLowerCase();
-                // Basic keywords for Spanish recipes
-                if(lower.includes('ingredientes') || lower.includes('ingredients')) { section = 1; return; }
-                if(lower.includes('elaboración') || lower.includes('preparación') || lower.includes('instrucciones') || lower.includes('paso 1')) { section = 2; return; }
-                
-                if(section === 1) ings.push(line);
-                else if(section === 2) inst.push(line);
-                // Heuristic: Short lines often ingredients, long often instructions if no section found
-                else {
-                    if (lines.length < 5) ings.push(line); // Assume list if very short
-                    else ings.push(line); // Default fallback
-                }
-            });
-
-            document.getElementById('inp-ingredients').value = ings.join('\n');
-            document.getElementById('inp-instructions').value = inst.join('\n');
-            if(!document.getElementById('inp-title').value) {
-                // Try to guess title from first line if short
-                if (lines[0] && lines[0].length < 50) document.getElementById('inp-title').value = lines[0];
-                else document.getElementById('inp-title').value = "Nueva Receta Importada";
-            }
+        // Listeners
+        document.getElementById('search-input').addEventListener('input', (e) => { searchTerm = e.target.value; renderApp(); });
+        document.getElementById('btn-sort-toggle').onclick = () => document.getElementById('sort-menu').classList.toggle('hidden');
+        document.getElementById('inp-image-url').addEventListener('input', (e) => { if(e.target.value) { document.getElementById('img-preview').src = e.target.value; document.getElementById('preview-container').classList.remove('hidden'); }});
+        
+        // --- AUTO DETECT CATEGORY FROM TEXT ---
+        function detectCategoriesFromText(text) {
+            const lower = text.toLowerCase();
+            const cats = [];
+            if (lower.includes('desayuno') || lower.includes('avena')) cats.push('Desayuno');
+            if (lower.includes('cena') || lower.includes('ligero')) cats.push('Cena');
+            if (lower.includes('snack') || lower.includes('barrita')) cats.push('Snack');
+            if (lower.includes('batido')) cats.push('Bebida');
+            if (lower.includes('postre') || lower.includes('chocolate')) cats.push('Postre');
+            if (lower.includes('pizza') || lower.includes('hamburguesa') || lower.includes('permitido')) cats.push('Permitidos');
+            if (cats.length === 0) cats.push('Comida');
+            return cats;
         }
 
+        // --- PASTE HANDLERS ---
         document.getElementById('magic-input').addEventListener('paste', async (e) => {
             e.preventDefault();
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            const items = (e.clipboardData || window.clipboardData).items;
             let blob = null;
-
-            // Check for image
-            for (let index in items) {
-                const item = items[index];
-                if (item.kind === 'file' && item.type.includes('image/')) {
-                    blob = item.getAsFile();
-                    break;
-                }
-            }
+            for (let i = 0; i < items.length; i++) { if (items[i].type.indexOf('image') !== -1) { blob = items[i].getAsFile(); break; } }
 
             if (blob) {
-                // HANDLE IMAGE (OCR)
                 const container = document.getElementById('magic-container');
                 const status = document.getElementById('ocr-status');
-                
                 container.classList.add('ocr-processing');
-                status.innerText = "⏳ Extrayendo texto de la imagen...";
+                status.innerText = "⏳ Leyendo imagen...";
                 status.classList.remove('hidden');
-                document.getElementById('magic-input').value = "Procesando imagen... esto puede tardar unos segundos.";
-
+                document.getElementById('magic-input').value = "Procesando imagen...";
+                
                 try {
-                    const result = await Tesseract.recognize(blob, 'spa', {
-                        logger: m => console.log(m)
-                    });
-                    
-                    const text = result.data.text;
-                    document.getElementById('magic-input').value = text; // Show extracted text
-                    processTextToRecipe(text); // Fill fields
-                    status.innerText = "✅ ¡Texto extraído!";
-                } catch (err) {
-                    console.error(err);
-                    document.getElementById('magic-input').value = "Error al leer imagen. Intenta con una más clara.";
-                    status.innerText = "❌ Error OCR";
-                } finally {
-                    container.classList.remove('ocr-processing');
-                }
-
+                    const res = await Tesseract.recognize(blob, 'spa');
+                    const text = res.data.text;
+                    document.getElementById('magic-input').value = text;
+                    processText(text);
+                    status.innerText = "✅ Listo";
+                } catch(err) { console.error(err); status.innerText = "❌ Error"; }
+                finally { container.classList.remove('ocr-processing'); }
             } else {
-                // HANDLE TEXT
-                const text = (e.clipboardData || window.clipboardData).getData('text');
+                const text = e.clipboardData.getData('text');
                 document.getElementById('magic-input').value = text;
-                processTextToRecipe(text);
+                processText(text);
             }
         });
 
-        // Image Paste for Cover
+        function processText(text) {
+            const lines = text.split('\n').filter(l => l.trim() !== '');
+            let ings=[], inst=[], section=0; 
+            lines.forEach(line => {
+                const l = line.toLowerCase();
+                if(l.includes('ingrediente')) { section=1; return; }
+                if(l.includes('instrucc') || l.includes('elabora') || l.includes('prepara')) { section=2; return; }
+                if(section===1) ings.push(line); else if(section===2) inst.push(line); else { if(lines.length<6) ings.push(line); else if(!document.getElementById('inp-title').value) document.getElementById('inp-title').value = line; }
+            });
+            document.getElementById('inp-ingredients').value = ings.join('\n');
+            document.getElementById('inp-instructions').value = inst.join('\n');
+            
+            selectedFormCategories = detectCategoriesFromText(text);
+            renderFormCategories();
+        }
+
         document.getElementById('inp-image-url').addEventListener('paste', (e) => {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (let index in items) {
-                const item = items[index];
-                if (item.kind === 'file' && item.type.includes('image/')) {
-                    const blob = item.getAsFile();
+            const items = (e.clipboardData).items;
+            for (let i=0; i<items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
                     const reader = new FileReader();
-                    reader.onload = (event) => {
-                        document.getElementById('inp-image-url').value = event.target.result;
-                        document.getElementById('img-preview').src = event.target.result;
+                    reader.onload = (evt) => {
+                        document.getElementById('inp-image-url').value = evt.target.result;
+                        document.getElementById('img-preview').src = evt.target.result;
                         document.getElementById('preview-container').classList.remove('hidden');
                     };
                     reader.readAsDataURL(blob);
@@ -771,14 +794,7 @@
             }
         });
 
-        document.getElementById('inp-image-url').addEventListener('input', (e) => {
-            const val = e.target.value;
-            if(val) {
-                document.getElementById('img-preview').src = val;
-                document.getElementById('preview-container').classList.remove('hidden');
-            }
-        });
-
+        renderCategories();
         lucide.createIcons();
     </script>
 </body>
