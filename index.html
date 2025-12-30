@@ -11,6 +11,9 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Tesseract.js (OCR para leer imágenes) -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap');
 
@@ -98,6 +101,17 @@
         .animate-in {
             animation: fadeIn 0.4s ease-out forwards;
         }
+        
+        /* Loading Pulse for OCR */
+        @keyframes pulse-blue {
+            0%, 100% { border-color: #bee3f8; }
+            50% { border-color: #3182ce; }
+        }
+        .ocr-processing {
+            border: 2px solid #3182ce;
+            animation: pulse-blue 1.5s infinite;
+            background-color: #ebf8ff;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -108,7 +122,7 @@
         <header class="mb-8 flex justify-between items-center">
             <div>
                 <h1 class="text-3xl md:text-4xl font-black text-gray-700 tracking-tight">Mis<span class="text-blue-500">Recetas</span>.</h1>
-                <p id="recipe-count" class="text-sm text-gray-500 mt-1">Cargando...</p>
+                <p id="recipe-count" class="text-sm text-gray-500 mt-1">Conectando a Firebase...</p>
             </div>
             <div class="neu-btn w-12 h-12 rounded-full text-blue-500">
                 <i data-lucide="chef-hat"></i>
@@ -244,11 +258,14 @@
             
             <div class="space-y-4">
                 <!-- Magic Paste Area -->
-                <div class="bg-blue-50 p-3 rounded-xl border border-blue-100">
-                    <div class="flex items-center gap-2 mb-2 text-blue-600 font-bold text-xs uppercase tracking-wider">
-                        <i data-lucide="wand-2" class="w-4 h-4"></i> Importación Mágica
+                <div id="magic-container" class="bg-blue-50 p-3 rounded-xl border border-blue-100 transition-colors">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-wider">
+                            <i data-lucide="wand-2" class="w-4 h-4"></i> Importación Mágica
+                        </div>
+                        <span id="ocr-status" class="text-[10px] text-blue-400 font-semibold hidden">Analizando...</span>
                     </div>
-                    <textarea id="magic-input" class="w-full bg-white/50 rounded-lg p-2 text-xs text-gray-600 outline-none border border-blue-100 placeholder-blue-300" rows="2" placeholder="Pega el texto de una receta aquí..."></textarea>
+                    <textarea id="magic-input" class="w-full bg-white/50 rounded-lg p-2 text-xs text-gray-600 outline-none border border-blue-100 placeholder-blue-300 transition-colors" rows="2" placeholder="✨ Pega texto o UNA FOTO de la receta aquí (Ctrl+V) para autocompletar..."></textarea>
                 </div>
 
                 <div>
@@ -320,17 +337,19 @@
     <!-- SCRIPTS FIREBASE + LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- 1. CONFIGURACIÓN ---
-        // Global variables from environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        
-        if (!firebaseConfig) {
-            console.error("Firebase config not found. Code will fail.");
-        }
+        // --- 1. CONFIGURACIÓN PERSONAL DEL USUARIO ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAfn1RVDfrbNMxVRgOcgHu-8QMmGAhugik",
+            authDomain: "comidassaludables.firebaseapp.com",
+            projectId: "comidassaludables",
+            storageBucket: "comidassaludables.firebasestorage.app",
+            messagingSenderId: "528526969296",
+            appId: "1:528526969296:web:00786114cf5a0f28ab91d5",
+            measurementId: "G-7D62CLX8N0"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -344,23 +363,12 @@
         let sortMode = 'default';
         let searchTerm = '';
 
-        // --- 2. AUTHENTICATION (CRITICAL FIX) ---
-        const initAuth = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth Error:", error);
-            }
-        };
+        // --- 2. AUTHENTICATION ---
+        signInAnonymously(auth).catch((error) => {
+            console.error("Auth Error:", error);
+            alert("Error de autenticación: " + error.message);
+        });
 
-        // Initialize Auth immediately
-        initAuth();
-
-        // Listen for User -> Then Load Data
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
@@ -372,10 +380,7 @@
         // --- 3. FIRESTORE LOGIC ---
         function subscribeToRecipes() {
             if (!currentUser) return;
-
-            // PATH CORRECTO: /artifacts/{appId}/users/{userId}/recipes
-            // NO ORDERBY to avoid index errors. Sort in JS.
-            const recipesRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'recipes');
+            const recipesRef = collection(db, 'users', currentUser.uid, 'recipes');
 
             onSnapshot(recipesRef, (snapshot) => {
                 recipes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -383,7 +388,7 @@
             }, (error) => {
                 console.error("Firestore Error:", error);
                 if (error.code === 'permission-denied') {
-                    alert("Error de permisos. Asegúrate de usar la ruta correcta.");
+                    alert("⚠️ Error de permisos.\n\nVe a tu Consola Firebase > Firestore > Reglas y pega esto:\n\nallow read, write: if request.auth != null;");
                 }
             });
         }
@@ -399,8 +404,8 @@
                 icon: document.getElementById('inp-icon').value,
                 imageType: document.getElementById('btn-mode-url').classList.contains('active') ? 'url' : 'emoji',
                 imageUrl: document.getElementById('inp-image-url').value,
-                imageColor: "from-blue-200 to-indigo-200", // Default gradient
-                tags: [], // Could implement tags parsing
+                imageColor: "from-blue-200 to-indigo-200", 
+                tags: [],
                 nutrition: {
                     protein: document.getElementById('inp-prot').value,
                     carbs: document.getElementById('inp-carb').value,
@@ -412,7 +417,7 @@
             };
 
             try {
-                const recipesRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'recipes');
+                const recipesRef = collection(db, 'users', currentUser.uid, 'recipes');
                 
                 if (editingId) {
                     await updateDoc(doc(recipesRef, editingId), recipeData);
@@ -429,43 +434,39 @@
         };
 
         window.deleteCurrentRecipe = async () => {
-            if (!editingId) return; // editingId is set when opening detail view for deletion context
+            if (!editingId) return;
             if(!confirm("¿Borrar definitivamente?")) return;
             
             try {
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'recipes', editingId);
+                const docRef = doc(db, 'users', currentUser.uid, 'recipes', editingId);
                 await deleteDoc(docRef);
                 closeDetail();
             } catch (e) {
                 console.error(e);
+                alert("Error al borrar: " + e.message);
             }
         };
 
         // --- 4. UI LOGIC (Render & Events) ---
         
         function renderApp() {
-            // Update Count
             document.getElementById('recipe-count').innerText = `${recipes.length} Recetas en Nube`;
 
-            // Filter & Sort
             let filtered = recipes.filter(r => {
                 const matchSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
-                if (activeCategory === 'Top Fit') return true; // Special logic handled later
+                if (activeCategory === 'Top Fit') return true;
                 if (activeCategory === 'Todos') return matchSearch;
                 return r.category === activeCategory && matchSearch;
             });
 
-            // Sorting (In Memory)
             const getVal = (v) => parseFloat(v) || 0;
             if (sortMode === 'minCal') filtered.sort((a,b) => getVal(a.calories) - getVal(b.calories));
             else if (sortMode === 'maxProt') filtered.sort((a,b) => getVal(b.nutrition.protein) - getVal(a.nutrition.protein));
             else if (sortMode === 'minCarbs') filtered.sort((a,b) => getVal(a.nutrition.carbs) - getVal(b.nutrition.carbs));
-            // Add more sorts here if needed
 
             const grid = document.getElementById('recipe-grid');
             grid.innerHTML = '';
 
-            // Handle "Top Fit" View vs Normal View
             if (activeCategory === 'Top Fit') {
                 renderTopFit(grid);
             } else {
@@ -481,7 +482,6 @@
                         card.className = "neu-flat p-5 rounded-3xl cursor-pointer hover:scale-[1.02] transition-transform relative overflow-hidden group";
                         card.onclick = () => openDetail(r);
                         
-                        // Image logic
                         let imgContent = `<span class="text-6xl drop-shadow-sm">${r.icon || '🍲'}</span>`;
                         if (r.imageType === 'url' && r.imageUrl) {
                             imgContent = `<img src="${r.imageUrl}" class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700">`;
@@ -541,7 +541,6 @@
             categories.forEach(cat => {
                 const btn = document.createElement('button');
                 const isActive = activeCategory === cat;
-                // Styling based on active state
                 btn.className = `min-w-[100px] snap-start px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-sm whitespace-nowrap border-none cursor-pointer ${
                     isActive 
                     ? 'bg-[#e0e5ec] text-blue-500 shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff]' 
@@ -556,18 +555,16 @@
 
         // --- 6. DETAILS & FORMS ---
         window.openDetail = (r) => {
-            editingId = r.id; // Set ID for potential delete/edit
+            editingId = r.id; 
             document.getElementById('main-view').classList.add('hidden');
             document.getElementById('detail-view').classList.remove('hidden');
             
-            // Populate Data
             document.getElementById('detail-title').innerText = r.title;
             document.getElementById('detail-cal').innerText = r.calories;
             document.getElementById('detail-prot').innerText = r.nutrition?.protein || '-';
             document.getElementById('detail-carb').innerText = r.nutrition?.carbs || '-';
             document.getElementById('detail-fat').innerText = r.nutrition?.fat || '-';
 
-            // Cover
             const cover = document.getElementById('detail-cover');
             cover.className = `h-64 w-full bg-gradient-to-r ${r.imageColor || 'from-gray-200 to-gray-300'} flex items-center justify-center relative overflow-hidden`;
             if (r.imageType === 'url' && r.imageUrl) {
@@ -576,17 +573,13 @@
                 cover.innerHTML = `<span class="text-9xl drop-shadow-md cursor-default">${r.icon || '🍲'}</span>`;
             }
 
-            // Lists
             const ul = document.getElementById('detail-ingredients');
             ul.innerHTML = (r.ingredients || []).map(i => `<li class="flex gap-3"><span class="w-2 h-2 mt-1.5 rounded-full bg-blue-400"></span>${i}</li>`).join('');
             
             const divInst = document.getElementById('detail-instructions');
             divInst.innerHTML = (r.instructions || []).map((s, i) => `<div class="flex gap-4"><div class="flex-shrink-0 w-6 h-6 rounded-full bg-[#e0e5ec] shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] flex items-center justify-center font-bold text-xs text-emerald-600">${i+1}</div><p>${s}</p></div>`).join('');
 
-            // Bind Edit Button
-            document.getElementById('btn-edit-recipe').onclick = () => {
-                openForm(r);
-            };
+            document.getElementById('btn-edit-recipe').onclick = () => { openForm(r); };
             document.getElementById('btn-delete-recipe').onclick = deleteCurrentRecipe;
             
             lucide.createIcons();
@@ -609,7 +602,11 @@
             editingId = r ? r.id : null;
             document.getElementById('form-title').innerText = r ? 'Editar Receta' : 'Nueva Receta';
 
-            // Fill inputs
+            // Reset magic UI
+            document.getElementById('magic-container').classList.remove('ocr-processing');
+            document.getElementById('ocr-status').classList.add('hidden');
+            document.getElementById('magic-input').value = "";
+
             document.getElementById('inp-title').value = r?.title || '';
             document.getElementById('inp-category').value = r?.category || 'Comida';
             document.getElementById('inp-cal').value = r?.calories || '';
@@ -621,7 +618,6 @@
             document.getElementById('inp-ingredients').value = r?.ingredients ? r.ingredients.join('\n') : '';
             document.getElementById('inp-instructions').value = r?.instructions ? r.instructions.join('\n') : '';
             
-            // Image Mode Logic
             if (r?.imageType === 'url') setImageMode('url');
             else setImageMode('emoji');
             
@@ -637,7 +633,6 @@
             document.getElementById('modal-form').classList.add('hidden');
         };
 
-        // --- 7. HELPER FUNCTIONS UI ---
         window.setImageMode = (mode) => {
             const btnEmoji = document.getElementById('btn-mode-emoji');
             const btnUrl = document.getElementById('btn-mode-url');
@@ -668,7 +663,6 @@
             renderApp();
         };
 
-        // Event Listeners
         document.getElementById('search-input').addEventListener('input', (e) => {
             searchTerm = e.target.value;
             renderApp();
@@ -678,34 +672,87 @@
             document.getElementById('sort-menu').classList.toggle('hidden');
         };
 
-        // Magic Paste
-        document.getElementById('magic-input').addEventListener('paste', (e) => {
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text');
+        // --- MAGIC PASTE LOGIC (TEXT + OCR) ---
+        
+        function processTextToRecipe(text) {
             const lines = text.split('\n').filter(l => l.trim() !== '');
-            
-            // Simple heuristics
             let ings = [], inst = [];
             let section = 0; // 0: unknown, 1: ing, 2: inst
             
             lines.forEach(line => {
                 const lower = line.toLowerCase();
-                if(lower.includes('ingredientes')) { section = 1; return; }
-                if(lower.includes('elaboración') || lower.includes('preparación')) { section = 2; return; }
+                // Basic keywords for Spanish recipes
+                if(lower.includes('ingredientes') || lower.includes('ingredients')) { section = 1; return; }
+                if(lower.includes('elaboración') || lower.includes('preparación') || lower.includes('instrucciones') || lower.includes('paso 1')) { section = 2; return; }
                 
                 if(section === 1) ings.push(line);
                 else if(section === 2) inst.push(line);
-                else ings.push(line); // Default to ingredients if ambiguous
+                // Heuristic: Short lines often ingredients, long often instructions if no section found
+                else {
+                    if (lines.length < 5) ings.push(line); // Assume list if very short
+                    else ings.push(line); // Default fallback
+                }
             });
 
             document.getElementById('inp-ingredients').value = ings.join('\n');
             document.getElementById('inp-instructions').value = inst.join('\n');
             if(!document.getElementById('inp-title').value) {
-                document.getElementById('inp-title').value = lines[0] || "Nueva Receta";
+                // Try to guess title from first line if short
+                if (lines[0] && lines[0].length < 50) document.getElementById('inp-title').value = lines[0];
+                else document.getElementById('inp-title').value = "Nueva Receta Importada";
+            }
+        }
+
+        document.getElementById('magic-input').addEventListener('paste', async (e) => {
+            e.preventDefault();
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            let blob = null;
+
+            // Check for image
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file' && item.type.includes('image/')) {
+                    blob = item.getAsFile();
+                    break;
+                }
+            }
+
+            if (blob) {
+                // HANDLE IMAGE (OCR)
+                const container = document.getElementById('magic-container');
+                const status = document.getElementById('ocr-status');
+                
+                container.classList.add('ocr-processing');
+                status.innerText = "⏳ Extrayendo texto de la imagen...";
+                status.classList.remove('hidden');
+                document.getElementById('magic-input').value = "Procesando imagen... esto puede tardar unos segundos.";
+
+                try {
+                    const result = await Tesseract.recognize(blob, 'spa', {
+                        logger: m => console.log(m)
+                    });
+                    
+                    const text = result.data.text;
+                    document.getElementById('magic-input').value = text; // Show extracted text
+                    processTextToRecipe(text); // Fill fields
+                    status.innerText = "✅ ¡Texto extraído!";
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('magic-input').value = "Error al leer imagen. Intenta con una más clara.";
+                    status.innerText = "❌ Error OCR";
+                } finally {
+                    container.classList.remove('ocr-processing');
+                }
+
+            } else {
+                // HANDLE TEXT
+                const text = (e.clipboardData || window.clipboardData).getData('text');
+                document.getElementById('magic-input').value = text;
+                processTextToRecipe(text);
             }
         });
 
-        // Image Paste
+        // Image Paste for Cover
         document.getElementById('inp-image-url').addEventListener('paste', (e) => {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (let index in items) {
@@ -724,7 +771,6 @@
             }
         });
 
-        // Preview Image on URL change
         document.getElementById('inp-image-url').addEventListener('input', (e) => {
             const val = e.target.value;
             if(val) {
