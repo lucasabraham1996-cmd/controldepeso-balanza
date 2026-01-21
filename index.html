@@ -29,8 +29,7 @@
         import { 
             getAuth, 
             onAuthStateChanged, 
-            signInAnonymously,
-            signInWithCustomToken 
+            signInAnonymously 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { 
             getFirestore, 
@@ -43,9 +42,16 @@
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // --- CORRECCIÓN: Usar configuración del sistema para garantizar permisos ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- CONFIGURACIÓN REAL PARA GITHUB PAGES ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAfn1RVDfrbNMxVRgOcgHu-8QMmGAhugik",
+            authDomain: "comidassaludables.firebaseapp.com",
+            projectId: "comidassaludables",
+            storageBucket: "comidassaludables.firebasestorage.app",
+            messagingSenderId: "528526969296",
+            appId: "1:528526969296:web:00786114cf5a0f28ab91d5",
+            measurementId: "G-7D62CLX8N0"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -65,12 +71,14 @@
             Edit2: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" })),
             X: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M18 6 6 18" }), h("path", { d: "m6 6 12 12" })),
             TrendingUp: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }), h("polyline", { points: "16 7 22 7 22 13" })),
-            TrendingDown: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("polyline", { points: "22 17 13.5 8.5 8.5 13.5 2 7" }), h("polyline", { points: "16 17 22 17 22 11" }))
+            TrendingDown: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("polyline", { points: "22 17 13.5 8.5 8.5 13.5 2 7" }), h("polyline", { points: "16 17 22 17 22 11" })),
+            AlertCircle: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("circle", { cx: "12", cy: "12", r: "10" }), h("line", { x1: "12", x2: "12", y1: "8", y2: "12" }), h("line", { x1: "12", x2: "12.01", y1: "16", y2: "16" }))
         };
 
         function App() {
             const [user, setUser] = React.useState(null);
             const [logs, setLogs] = React.useState([]);
+            const [permissionError, setPermissionError] = React.useState(false); 
             
             const [weightInput, setWeightInput] = React.useState('');
             const [dateInput, setDateInput] = React.useState(new Date().toISOString().split('T')[0]);
@@ -83,25 +91,17 @@
             const [isAddingProfile, setIsAddingProfile] = React.useState(false);
             const [newProfileName, setNewProfileName] = React.useState('');
 
-            // Autenticación robusta (Prioridad a token del sistema)
             React.useEffect(() => {
-                const initAuth = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                };
-                initAuth();
+                signInAnonymously(auth).catch((error) => console.error("Error Auth:", error));
                 return onAuthStateChanged(auth, setUser);
             }, []);
 
-            // Cargar datos (Ruta Segura para evitar errores de permisos)
             React.useEffect(() => {
                 if (!user) return;
+                setPermissionError(false);
                 
-                // Ruta: artifacts/{appId}/users/{userId}/registros_peso
-                const logsCollection = collection(db, 'artifacts', appId, 'users', user.uid, 'registros_peso');
+                // Usamos una colección anidada por usuario para mayor seguridad y orden
+                const logsCollection = collection(db, 'users', user.uid, 'registros_peso');
                 
                 const unsubscribe = onSnapshot(logsCollection, (snapshot) => {
                     const logsData = snapshot.docs.map(doc => ({
@@ -109,7 +109,10 @@
                         ...doc.data()
                     }));
                     setLogs(logsData);
-                }, console.error);
+                }, (error) => {
+                    console.error("Error Firestore:", error);
+                    if(error.code === 'permission-denied') setPermissionError(true);
+                });
                 return () => unsubscribe();
             }, [user]);
 
@@ -164,15 +167,17 @@
 
             const handleSaveLog = async (e) => {
                 e.preventDefault();
-                if (!weightInput || !dateInput || !user) return;
+                if (!user) {
+                    alert("Espera un momento, iniciando sesión...");
+                    return;
+                }
+                if (!weightInput || !dateInput) return;
 
                 setIsSubmitting(true);
                 try {
-                    // Usar ruta segura
-                    const collectionRef = collection(db, 'artifacts', appId, 'users', user.uid, 'registros_peso');
-                    
+                    const collectionRef = collection(db, 'users', user.uid, 'registros_peso');
                     if (editingId) {
-                        const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'registros_peso', editingId);
+                        const logRef = doc(db, 'users', user.uid, 'registros_peso', editingId);
                         await updateDoc(logRef, {
                             weight: parseFloat(weightInput),
                             date: dateInput,
@@ -191,7 +196,8 @@
                     setWeightInput(''); 
                 } catch (error) {
                     console.error("Error al guardar:", error);
-                    alert("Error al guardar. Verifica tu conexión.");
+                    if(error.code === 'permission-denied') setPermissionError(true);
+                    else alert("Error al guardar: " + error.message);
                 } finally {
                     setIsSubmitting(false);
                 }
@@ -217,10 +223,11 @@
             const executeDelete = async () => {
                 if (!deleteModal.id || !user) return;
                 try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'registros_peso', deleteModal.id));
+                    await deleteDoc(doc(db, 'users', user.uid, 'registros_peso', deleteModal.id));
                     if (editingId === deleteModal.id) cancelEditing();
                 } catch (error) {
                     console.error("Error al eliminar:", error);
+                    if(error.code === 'permission-denied') setPermissionError(true);
                 } finally {
                     setDeleteModal({ show: false, id: null });
                 }
@@ -248,7 +255,21 @@
                 }
             };
 
-            // --- Componentes UI Modularizados ---
+            // --- Componentes UI ---
+
+            const renderErrorBanner = permissionError ? h("div", { className: "fixed top-0 left-0 right-0 z-[60] p-4 bg-red-500 text-white shadow-xl animate-fadeIn" },
+                h("div", { className: "max-w-md mx-auto flex items-start gap-3" },
+                    h(Icons.AlertCircle, { className: "w-6 h-6 shrink-0 mt-0.5" }),
+                    h("div", null,
+                        h("h3", { className: "font-bold text-lg" }, "Permiso Denegado"),
+                        h("p", { className: "text-sm mt-1 opacity-90" }, "Las reglas de Firebase están bloqueando el acceso. En Firebase Console > Firestore Database > Reglas, cambia 'false' por 'if request.auth != null;'"),
+                        h("button", { 
+                            onClick: () => setPermissionError(false),
+                            className: "mt-3 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-white font-bold transition-colors"
+                        }, "Cerrar")
+                    )
+                )
+            ) : null;
 
             const renderModal = deleteModal.show ? h("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4" },
                 h("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm animate-fadeIn", onClick: () => setDeleteModal({ show: false, id: null }) }),
@@ -308,7 +329,6 @@
                 )
             );
 
-            // Variable para el botón de guardado (evita anidación excesiva)
             const saveButtonContent = isSubmitting ? 'Guardando...' : (editingId ? 
                 h(React.Fragment, null, h(Icons.Edit2, { className: "w-5 h-5" }), " Actualizar Registro") : 
                 h(React.Fragment, null, h(Icons.Plus, { className: "w-6 h-6" }), " Guardar Registro"));
@@ -364,7 +384,6 @@
                 )
             );
 
-            // Lista de Historial simplificada
             const historyListContent = filteredSortedLogs.length === 0 ? 
                 h("div", { className: "text-center py-16 bg-white/60 rounded-3xl border-2 border-dashed border-slate-200 mx-2" },
                     h("p", { className: "text-slate-400 font-medium text-lg" }, "Sin registros"),
@@ -385,7 +404,6 @@
                             const isNeutral = diff === 0;
                             const isEditing = editingId === log.id;
 
-                            // Preparar contenido de variación fuera del h()
                             let variationContent;
                             if (diff !== null) {
                                 variationContent = h("div", { className: `flex items-center gap-0.5 sm:gap-1 text-lg sm:text-xl font-black ${isLoss ? 'text-emerald-500' : isGain ? 'text-rose-500' : 'text-slate-300'}` },
@@ -403,26 +421,18 @@
                                 key: log.id,
                                 className: `grid grid-cols-12 items-center p-4 sm:p-5 transition-colors relative ${isEditing ? 'bg-amber-50' : 'hover:bg-slate-50'}`
                             },
-                                // Fecha
                                 h("div", { className: "col-span-4 text-slate-500 font-semibold text-sm pl-1 leading-tight" }, formatDate(log.date)),
-                                
-                                // Peso
                                 h("div", { className: "col-span-4 text-center" },
                                     h("span", { className: `text-2xl sm:text-3xl font-black tracking-tight ${isEditing ? 'text-amber-600' : 'text-slate-700'}` }, log.weight)
                                 ),
-
-                                // Variación y Acciones
                                 h("div", { className: "col-span-4 flex justify-end items-center gap-1 sm:gap-2 pr-1" },
                                     variationContent,
-                                    
-                                    // Botones
                                     h("div", { className: "flex gap-0 sm:gap-1 ml-1 sm:ml-2" },
                                         h("button", { 
                                             onClick: () => startEditing(log),
                                             className: `p-2 rounded-full transition-colors active:scale-90 ${isEditing ? 'bg-amber-200 text-amber-700' : 'text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`,
                                             title: "Editar"
                                         }, h(Icons.Edit2, { className: "w-4 h-4 sm:w-5 sm:h-5" })),
-                                        
                                         h("button", { 
                                             onClick: (e) => { e.stopPropagation(); confirmDelete(log.id); },
                                             className: "p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors active:scale-90",
@@ -443,8 +453,8 @@
                 historyListContent
             );
 
-            // Renderizado Final Limpio
             return h("div", { className: `min-h-screen font-sans text-slate-800 flex flex-col items-center py-6 px-4 transition-colors duration-500 ${currentTheme.bgPage}` },
+                renderErrorBanner,
                 renderModal,
                 renderHeader,
                 renderProfileSelector,
