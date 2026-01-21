@@ -29,7 +29,8 @@
         import { 
             getAuth, 
             onAuthStateChanged, 
-            signInAnonymously 
+            signInAnonymously,
+            signInWithCustomToken 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { 
             getFirestore, 
@@ -42,21 +43,14 @@
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAfn1RVDfrbNMxVRgOcgHu-8QMmGAhugik",
-            authDomain: "comidassaludables.firebaseapp.com",
-            projectId: "comidassaludables",
-            storageBucket: "comidassaludables.firebasestorage.app",
-            messagingSenderId: "528526969296",
-            appId: "1:528526969296:web:00786114cf5a0f28ab91d5",
-            measurementId: "G-7D62CLX8N0"
-        };
+        // --- CORRECCIÓN: Usar configuración del sistema para garantizar permisos ---
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const COLLECTION_NAME = 'registros_peso';
-
+        
         // Alias para createElement
         const h = React.createElement;
         
@@ -89,13 +83,26 @@
             const [isAddingProfile, setIsAddingProfile] = React.useState(false);
             const [newProfileName, setNewProfileName] = React.useState('');
 
+            // Autenticación robusta (Prioridad a token del sistema)
             React.useEffect(() => {
-                signInAnonymously(auth).catch(console.error);
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                };
+                initAuth();
                 return onAuthStateChanged(auth, setUser);
             }, []);
 
+            // Cargar datos (Ruta Segura para evitar errores de permisos)
             React.useEffect(() => {
-                const logsCollection = collection(db, COLLECTION_NAME);
+                if (!user) return;
+                
+                // Ruta: artifacts/{appId}/users/{userId}/registros_peso
+                const logsCollection = collection(db, 'artifacts', appId, 'users', user.uid, 'registros_peso');
+                
                 const unsubscribe = onSnapshot(logsCollection, (snapshot) => {
                     const logsData = snapshot.docs.map(doc => ({
                         id: doc.id,
@@ -157,13 +164,15 @@
 
             const handleSaveLog = async (e) => {
                 e.preventDefault();
-                if (!weightInput || !dateInput) return;
+                if (!weightInput || !dateInput || !user) return;
 
                 setIsSubmitting(true);
                 try {
-                    const collectionRef = collection(db, COLLECTION_NAME);
+                    // Usar ruta segura
+                    const collectionRef = collection(db, 'artifacts', appId, 'users', user.uid, 'registros_peso');
+                    
                     if (editingId) {
-                        const logRef = doc(db, COLLECTION_NAME, editingId);
+                        const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'registros_peso', editingId);
                         await updateDoc(logRef, {
                             weight: parseFloat(weightInput),
                             date: dateInput,
@@ -182,7 +191,7 @@
                     setWeightInput(''); 
                 } catch (error) {
                     console.error("Error al guardar:", error);
-                    alert("Error al guardar en la base de datos.");
+                    alert("Error al guardar. Verifica tu conexión.");
                 } finally {
                     setIsSubmitting(false);
                 }
@@ -206,9 +215,9 @@
             };
 
             const executeDelete = async () => {
-                if (!deleteModal.id) return;
+                if (!deleteModal.id || !user) return;
                 try {
-                    await deleteDoc(doc(db, COLLECTION_NAME, deleteModal.id));
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'registros_peso', deleteModal.id));
                     if (editingId === deleteModal.id) cancelEditing();
                 } catch (error) {
                     console.error("Error al eliminar:", error);
