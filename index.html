@@ -60,7 +60,7 @@
         // Alias para createElement
         const h = React.createElement;
         
-        // Iconos simplificados para asegurar sintaxis
+        // Iconos
         const Icons = {
             Scale: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" }), h("path", { d: "m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" }), h("path", { d: "M7 21h10" }), h("path", { d: "M12 3v18" }), h("path", { d: "M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" })),
             Calendar: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", ry: "2" }), h("line", { x1: "16", x2: "16", y1: "2", y2: "6" }), h("line", { x1: "8", x2: "8", y1: "2", y2: "6" }), h("line", { x1: "3", x2: "21", y1: "10", y2: "10" })),
@@ -239,7 +239,7 @@
                 }
             };
 
-            // --- Componentes UI ---
+            // --- Componentes UI Modularizados ---
 
             const renderModal = deleteModal.show ? h("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4" },
                 h("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm animate-fadeIn", onClick: () => setDeleteModal({ show: false, id: null }) }),
@@ -299,6 +299,11 @@
                 )
             );
 
+            // Variable para el botón de guardado (evita anidación excesiva)
+            const saveButtonContent = isSubmitting ? 'Guardando...' : (editingId ? 
+                h(React.Fragment, null, h(Icons.Edit2, { className: "w-5 h-5" }), " Actualizar Registro") : 
+                h(React.Fragment, null, h(Icons.Plus, { className: "w-6 h-6" }), " Guardar Registro"));
+
             const renderForm = h("div", { className: `w-full max-w-lg bg-white/90 backdrop-blur-md rounded-3xl shadow-xl border ${editingId ? 'border-amber-300 ring-2 ring-amber-100' : 'border-white/50'} p-5 sm:p-6 mb-8 transition-all duration-300` },
                 h("div", { className: "flex justify-between items-center mb-4" },
                     h("div", { className: "text-left" },
@@ -346,83 +351,87 @@
                         type: "submit", 
                         disabled: isSubmitting,
                         className: `w-full bg-gradient-to-r ${editingId ? 'from-amber-400 to-orange-500' : currentTheme.gradientBg} text-white font-bold text-lg py-3 sm:py-4 rounded-2xl transition-all shadow-lg transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:opacity-90 touch-manipulation`
-                    }, isSubmitting ? 'Guardando...' : (editingId ? 
-                        h(React.Fragment, null, h(Icons.Edit2, { className: "w-5 h-5" }), " Actualizar Registro") : 
-                        h(React.Fragment, null, h(Icons.Plus, { className: "w-6 h-6" }), " Guardar Registro"))
-                    )
+                    }, saveButtonContent)
                 )
             );
+
+            // Lista de Historial simplificada
+            const historyListContent = filteredSortedLogs.length === 0 ? 
+                h("div", { className: "text-center py-16 bg-white/60 rounded-3xl border-2 border-dashed border-slate-200 mx-2" },
+                    h("p", { className: "text-slate-400 font-medium text-lg" }, "Sin registros"),
+                    h("p", { className: "text-slate-400/70" }, "¡Empieza hoy!")
+                )
+            :
+                h("div", { className: "bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mx-1 sm:mx-0" },
+                    h("div", { className: "grid grid-cols-12 bg-slate-50 p-4 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider" },
+                        h("div", { className: "col-span-4 pl-1" }, "Fecha"),
+                        h("div", { className: "col-span-4 text-center" }, "Peso"),
+                        h("div", { className: "col-span-4 text-right pr-2" }, "Var.")
+                    ),
+                    h("div", { className: "divide-y divide-slate-50" },
+                        filteredSortedLogs.map((log, index) => {
+                            const diff = getDifference(index, log.weight);
+                            const isGain = diff > 0;
+                            const isLoss = diff < 0;
+                            const isNeutral = diff === 0;
+                            const isEditing = editingId === log.id;
+
+                            // Preparar contenido de variación fuera del h()
+                            let variationContent;
+                            if (diff !== null) {
+                                variationContent = h("div", { className: `flex items-center gap-0.5 sm:gap-1 text-lg sm:text-xl font-black ${isLoss ? 'text-emerald-500' : isGain ? 'text-rose-500' : 'text-slate-300'}` },
+                                    isLoss ? h(Icons.TrendingDown, { className: "w-4 h-4 sm:w-6 sm:h-6" }) : null,
+                                    isGain ? h(Icons.TrendingUp, { className: "w-4 h-4 sm:w-6 sm:h-6" }) : null,
+                                    isNeutral ? h(Icons.Minus, { className: "w-4 h-4 sm:w-5 sm:h-5" }) : null,
+                                    h("span", { className: "hidden sm:inline" }, Math.abs(diff).toFixed(1)),
+                                    h("span", { className: "sm:hidden text-base" }, Math.abs(diff).toFixed(1))
+                                );
+                            } else {
+                                variationContent = h("span", { className: "text-slate-300 font-bold text-xl" }, "-");
+                            }
+
+                            return h("div", { 
+                                key: log.id,
+                                className: `grid grid-cols-12 items-center p-4 sm:p-5 transition-colors relative ${isEditing ? 'bg-amber-50' : 'hover:bg-slate-50'}`
+                            },
+                                // Fecha
+                                h("div", { className: "col-span-4 text-slate-500 font-semibold text-sm pl-1 leading-tight" }, formatDate(log.date)),
+                                
+                                // Peso
+                                h("div", { className: "col-span-4 text-center" },
+                                    h("span", { className: `text-2xl sm:text-3xl font-black tracking-tight ${isEditing ? 'text-amber-600' : 'text-slate-700'}` }, log.weight)
+                                ),
+
+                                // Variación y Acciones
+                                h("div", { className: "col-span-4 flex justify-end items-center gap-1 sm:gap-2 pr-1" },
+                                    variationContent,
+                                    
+                                    // Botones
+                                    h("div", { className: "flex gap-0 sm:gap-1 ml-1 sm:ml-2" },
+                                        h("button", { 
+                                            onClick: () => startEditing(log),
+                                            className: `p-2 rounded-full transition-colors active:scale-90 ${isEditing ? 'bg-amber-200 text-amber-700' : 'text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`,
+                                            title: "Editar"
+                                        }, h(Icons.Edit2, { className: "w-4 h-4 sm:w-5 sm:h-5" })),
+                                        
+                                        h("button", { 
+                                            onClick: (e) => { e.stopPropagation(); confirmDelete(log.id); },
+                                            className: "p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors active:scale-90",
+                                            title: "Eliminar"
+                                        }, h(Icons.Trash2, { className: "w-4 h-4 sm:w-5 sm:h-5" }))
+                                    )
+                                )
+                            );
+                        })
+                    )
+                );
 
             const renderHistory = h("div", { className: "w-full max-w-lg pb-10" },
                 h("h2", { className: "text-xl font-black text-slate-700 mb-4 px-4 flex items-center gap-2" },
                     h(Icons.TrendingUp, { className: `w-6 h-6 ${currentTheme.iconColor}` }),
                     "Historial"
                 ),
-                (filteredSortedLogs.length === 0 ? 
-                    h("div", { className: "text-center py-16 bg-white/60 rounded-3xl border-2 border-dashed border-slate-200 mx-2" },
-                        h("p", { className: "text-slate-400 font-medium text-lg" }, "Sin registros"),
-                        h("p", { className: "text-slate-400/70" }, "¡Empieza hoy!")
-                    )
-                :
-                    h("div", { className: "bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mx-1 sm:mx-0" },
-                        h("div", { className: "grid grid-cols-12 bg-slate-50 p-4 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider" },
-                            h("div", { className: "col-span-4 pl-1" }, "Fecha"),
-                            h("div", { className: "col-span-4 text-center" }, "Peso"),
-                            h("div", { className: "col-span-4 text-right pr-2" }, "Var.")
-                        ),
-                        h("div", { className: "divide-y divide-slate-50" },
-                            filteredSortedLogs.map((log, index) => {
-                                const diff = getDifference(index, log.weight);
-                                const isGain = diff > 0;
-                                const isLoss = diff < 0;
-                                const isNeutral = diff === 0;
-                                const isEditing = editingId === log.id;
-
-                                return h("div", { 
-                                    key: log.id,
-                                    className: `grid grid-cols-12 items-center p-4 sm:p-5 transition-colors relative ${isEditing ? 'bg-amber-50' : 'hover:bg-slate-50'}`
-                                },
-                                    // Fecha
-                                    h("div", { className: "col-span-4 text-slate-500 font-semibold text-sm pl-1 leading-tight" }, formatDate(log.date)),
-                                    
-                                    // Peso
-                                    h("div", { className: "col-span-4 text-center" },
-                                        h("span", { className: `text-2xl sm:text-3xl font-black tracking-tight ${isEditing ? 'text-amber-600' : 'text-slate-700'}` }, log.weight)
-                                    ),
-
-                                    // Variación y Acciones
-                                    h("div", { className: "col-span-4 flex justify-end items-center gap-1 sm:gap-2 pr-1" },
-                                        (diff !== null ? 
-                                            h("div", { className: `flex items-center gap-0.5 sm:gap-1 text-lg sm:text-xl font-black ${isLoss ? 'text-emerald-500' : isGain ? 'text-rose-500' : 'text-slate-300'}` },
-                                                isLoss && h(Icons.TrendingDown, { className: "w-4 h-4 sm:w-6 sm:h-6" }),
-                                                isGain && h(Icons.TrendingUp, { className: "w-4 h-4 sm:w-6 sm:h-6" }),
-                                                isNeutral && h(Icons.Minus, { className: "w-4 h-4 sm:w-5 sm:h-5" }),
-                                                h("span", { className: "hidden sm:inline" }, Math.abs(diff).toFixed(1)),
-                                                h("span", { className: "sm:hidden text-base" }, Math.abs(diff).toFixed(1))
-                                            )
-                                        :
-                                            h("span", { className: "text-slate-300 font-bold text-xl" }, "-")),
-                                        
-                                        // Botones
-                                        h("div", { className: "flex gap-0 sm:gap-1 ml-1 sm:ml-2" },
-                                            h("button", { 
-                                                onClick: () => startEditing(log),
-                                                className: `p-2 rounded-full transition-colors active:scale-90 ${isEditing ? 'bg-amber-200 text-amber-700' : 'text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`,
-                                                title: "Editar"
-                                            }, h(Icons.Edit2, { className: "w-4 h-4 sm:w-5 sm:h-5" })),
-                                            
-                                            h("button", { 
-                                                onClick: (e) => { e.stopPropagation(); confirmDelete(log.id); },
-                                                className: "p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors active:scale-90",
-                                                title: "Eliminar"
-                                            }, h(Icons.Trash2, { className: "w-4 h-4 sm:w-5 sm:h-5" }))
-                                        )
-                                    )
-                                );
-                            })
-                        )
-                    )
-                )
+                historyListContent
             );
 
             // Renderizado Final Limpio
