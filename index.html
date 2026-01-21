@@ -3,374 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recetas Fit Compartidas 🥗</title>
+    <title>Control de Peso Diario</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Tesseract.js (OCR) -->
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Estilos base para móviles -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap');
-
-        body {
-            background-color: #e0e5ec;
-            font-family: 'Nunito', sans-serif;
-            color: #4a5568;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* Neumorphism Utilities */
-        .neu-flat {
-            background: #e0e5ec;
-            box-shadow: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5);
-            border-radius: 20px;
-        }
-
-        .neu-pressed {
-            background: #e0e5ec;
-            box-shadow: inset 6px 6px 10px 0 rgba(163,177,198, 0.7), inset -6px -6px 10px 0 rgba(255,255,255, 0.8);
-            border-radius: 20px;
-        }
-
-        .neu-btn {
-            background: #e0e5ec;
-            box-shadow: 6px 6px 10px 0 rgba(163,177,198, 0.7), -6px -6px 10px 0 rgba(255,255,255, 0.8);
-            border-radius: 50px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            cursor: pointer;
-            color: #718096;
-            font-weight: 700;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .neu-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 4px 4px 8px 0 rgba(163,177,198, 0.7), -4px -4px 8px 0 rgba(255,255,255, 0.8);
-            color: #4299e1;
-        }
-
-        .neu-btn:active, .neu-btn.active {
-            transform: translateY(0);
-            box-shadow: inset 4px 4px 8px 0 rgba(163,177,198, 0.7), inset -4px -4px 8px 0 rgba(255,255,255, 0.8);
-            color: #3182ce;
-        }
-
-        /* Chips */
-        .neu-chip {
-            background: #e0e5ec;
-            border-radius: 12px;
-            padding: 8px 12px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #718096;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-            box-shadow: 3px 3px 6px #b8b9be, -3px -3px 6px #ffffff;
-        }
-
-        .neu-chip.selected {
-            background: #ebf8ff;
-            color: #3182ce;
-            border-color: #3182ce;
-            box-shadow: inset 2px 2px 4px #b8b9be, inset -2px -2px 4px #ffffff;
-        }
-
-        .neu-btn.danger { color: #f56565; }
-        .neu-btn.danger:hover { color: #c53030; }
-
-        .neu-input {
-            background: #e0e5ec;
-            box-shadow: inset 5px 5px 10px #b8b9be, inset -5px -5px 10px #ffffff;
-            border: none;
-            outline: none;
-            border-radius: 15px;
-            padding: 12px 20px;
-            width: 100%;
-            color: #4a5568;
-            transition: box-shadow 0.2s ease;
-        }
-        .neu-input:focus { box-shadow: inset 3px 3px 6px #b8b9be, inset -3px -3px 6px #ffffff; }
-
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.4s ease-out forwards; }
-        
-        @keyframes pulse-blue { 0%, 100% { border-color: #bee3f8; } 50% { border-color: #3182ce; } }
-        .ocr-processing { border: 2px solid #3182ce; animation: pulse-blue 1.5s infinite; background-color: #ebf8ff; }
-        
-        /* Error Box */
-        .error-box {
-            background: #fff5f5;
-            border: 2px dashed #fc8181;
-            padding: 20px;
-            border-radius: 20px;
-            color: #c53030;
-            text-align: center;
-        }
+        body { -webkit-tap-highlight-color: transparent; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
+        .animate-scaleUp { animation: scaleUp 0.2s ease-out; }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8">
+<body class="bg-slate-50">
+    <div id="root"></div>
 
-    <div id="app" class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <header class="mb-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-black text-gray-700 tracking-tight">Mis<span class="text-blue-500">Recetas</span>.</h1>
-                <p id="recipe-count" class="text-xs md:text-sm text-gray-500 mt-1 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" id="status-dot"></span>
-                    <span id="status-text">Conectando a Firebase...</span>
-                </p>
-            </div>
-            <div class="neu-btn w-12 h-12 rounded-full text-blue-500 relative">
-                <i data-lucide="chef-hat"></i>
-                <div class="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-[#e0e5ec]" title="En línea"></div>
-            </div>
-        </header>
-
-        <!-- Permissions Error View (Hidden by default) -->
-        <div id="permissions-error" class="hidden mb-8 animate-in">
-            <div class="error-box shadow-xl">
-                <div class="flex justify-center mb-4">
-                    <i data-lucide="lock" class="w-12 h-12 text-red-400"></i>
-                </div>
-                <h2 class="text-xl font-bold mb-2">Acceso Bloqueado por Firebase</h2>
-                <p class="text-sm mb-4">Para compartir recetas, necesitas abrir los permisos en tu consola.</p>
-                
-                <div class="bg-gray-800 text-gray-200 text-xs text-left p-4 rounded-xl overflow-x-auto mb-4 font-mono">
-                    <p class="opacity-50">// Copia y pega esto en Firestore Database > Reglas</p>
-                    <p class="text-green-400">rules_version = '2';</p>
-                    <p class="text-purple-400">service cloud.firestore {</p>
-                    <p class="pl-4">match /databases/{database}/documents {</p>
-                    <p class="pl-8 text-yellow-300">match /recetas_compartidas/{document=**} {</p>
-                    <p class="pl-12 text-blue-300">allow read, write: if true;</p>
-                    <p class="pl-8 text-yellow-300">}</p>
-                    <p class="pl-4">}</p>
-                    <p class="text-purple-400">}</p>
-                </div>
-                
-                <button onclick="location.reload()" class="bg-red-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-red-600 transition-colors">
-                    Ya lo hice, recargar página
-                </button>
-            </div>
-        </div>
-
-        <!-- Main View -->
-        <div id="main-view">
-            <!-- Search & Sort -->
-            <section class="mb-8 space-y-5">
-                <div class="flex gap-4">
-                    <div class="relative flex-1">
-                        <input type="text" id="search-input" placeholder="Buscar receta..." class="neu-input">
-                        <i data-lucide="search" class="absolute right-4 top-3 text-gray-400 w-5 h-5"></i>
-                    </div>
-                    
-                    <div class="relative">
-                        <button type="button" id="btn-sort-toggle" class="neu-btn h-full px-4 text-gray-600">
-                            <i data-lucide="list-filter" class="w-5 h-5"></i>
-                        </button>
-                        <div id="sort-menu" class="hidden absolute right-0 mt-3 w-56 neu-flat p-2 z-20 bg-[#e0e5ec] text-sm">
-                            <button type="button" onclick="setSort('default')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Por Defecto</button>
-                            <button type="button" onclick="setSort('minCal')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Menos Calorías</button>
-                            <button type="button" onclick="setSort('maxProt')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Más Proteína</button>
-                            <div class="h-px bg-gray-300 my-1"></div>
-                            <button type="button" onclick="setSort('minCarbs')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-200">Menos Hidratos</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Categories -->
-                <div id="categories-container" class="flex overflow-x-auto gap-3 pb-4 scrollbar-hide snap-x">
-                    <!-- Buttons injected via JS -->
-                </div>
-            </section>
-
-            <!-- Recipe Grid -->
-            <section id="recipe-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
-                <!-- Cards injected via JS -->
-            </section>
-            
-            <!-- Empty State -->
-            <div id="empty-state" class="hidden flex-col items-center justify-center py-20 opacity-50">
-                <div class="neu-pressed p-6 rounded-full mb-4">
-                    <i data-lucide="plus" class="w-12 h-12 text-gray-400"></i>
-                </div>
-                <p class="text-xl font-bold text-gray-500">Recetario Compartido Vacío</p>
-                <p class="text-sm text-gray-400">Añade la primera receta para ti y tu pareja.</p>
-            </div>
-        </div>
-
-        <!-- Detail View -->
-        <div id="detail-view" class="hidden animate-in pb-20">
-            <div class="flex justify-between items-center mb-6">
-                <button type="button" onclick="closeDetail()" class="neu-btn w-12 h-12 rounded-full">
-                    <i data-lucide="chevron-left"></i>
-                </button>
-                <span class="text-xs font-bold tracking-widest uppercase text-gray-400">Detalle</span>
-                <div class="flex gap-3">
-                    <button type="button" id="btn-edit-recipe" class="neu-btn w-12 h-12 rounded-full text-blue-400">
-                        <i data-lucide="edit-2"></i>
-                    </button>
-                    <button type="button" id="btn-delete-recipe" class="neu-btn w-12 h-12 rounded-full text-red-400 danger">
-                        <i data-lucide="trash-2"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="neu-flat p-0 overflow-hidden mb-8">
-                <!-- Cover -->
-                <div id="detail-cover" class="h-64 w-full bg-gray-200 flex items-center justify-center relative overflow-hidden"></div>
-                
-                <div class="p-6 md:p-8">
-                    <h1 id="detail-title" class="text-3xl font-bold text-gray-800 mb-2 leading-tight"></h1>
-                    <!-- Category Chips in Detail -->
-                    <div id="detail-categories" class="flex gap-2 mb-4 flex-wrap"></div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                        <div class="neu-pressed flex flex-col items-center p-3 rounded-2xl">
-                            <i data-lucide="flame" class="text-orange-500 mb-1 w-5 h-5"></i>
-                            <span class="text-[10px] text-gray-500">Calorías</span>
-                            <span id="detail-cal" class="font-bold"></span>
-                        </div>
-                        <div class="neu-pressed flex flex-col items-center p-3 rounded-2xl">
-                            <i data-lucide="activity" class="text-blue-500 mb-1 w-5 h-5"></i>
-                            <span class="text-[10px] text-gray-500">Proteína</span>
-                            <span id="detail-prot" class="font-bold"></span>
-                        </div>
-                        <div class="neu-pressed flex flex-col items-center p-3 rounded-2xl">
-                            <i data-lucide="wheat" class="text-yellow-600 mb-1 w-5 h-5"></i>
-                            <span class="text-[10px] text-gray-500">Carbos</span>
-                            <span id="detail-carb" class="font-bold"></span>
-                        </div>
-                        <div class="neu-pressed flex flex-col items-center p-3 rounded-2xl">
-                            <i data-lucide="droplets" class="text-purple-500 mb-1 w-5 h-5"></i>
-                            <span class="text-[10px] text-gray-500">Grasas</span>
-                            <span id="detail-fat" class="font-bold"></span>
-                        </div>
-                    </div>
-
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div>
-                            <h3 class="text-base font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                <span class="w-1 h-6 bg-blue-400 rounded-full"></span> Ingredientes
-                            </h3>
-                            <ul id="detail-ingredients" class="space-y-3 text-sm text-gray-600"></ul>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                <span class="w-1 h-6 bg-emerald-400 rounded-full"></span> Elaboración
-                            </h3>
-                            <div id="detail-instructions" class="space-y-4 text-sm text-gray-600"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- FAB -->
-        <button type="button" onclick="openForm()" class="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full bg-[#e0e5ec] text-blue-500 shadow-[6px_6px_12px_#b8b9be,-6px_-6px_12px_#ffffff] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
-            <i data-lucide="plus" class="w-8 h-8 stroke-[3]"></i>
-        </button>
-
-    </div>
-
-    <!-- MODAL FORM -->
-    <div id="modal-form" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#e0e5ec]/90 backdrop-blur-sm animate-in" style="-webkit-backdrop-filter: blur(4px);">
-        <div class="neu-flat w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-            <h2 id="form-title" class="text-2xl font-bold text-gray-700 mb-4">Nueva Receta</h2>
-            
-            <div class="space-y-4">
-                <!-- Magic Paste -->
-                <div id="magic-container" class="bg-blue-50 p-3 rounded-xl border border-blue-100 transition-colors">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-wider">
-                            <i data-lucide="wand-2" class="w-4 h-4"></i> Importación Mágica
-                        </div>
-                        <span id="ocr-status" class="text-[10px] text-blue-400 font-semibold hidden">Analizando...</span>
-                    </div>
-                    <textarea id="magic-input" class="w-full bg-white/50 rounded-lg p-2 text-xs text-gray-600 outline-none border border-blue-100 placeholder-blue-300 transition-colors" rows="2" placeholder="✨ Pega texto o FOTO (Ctrl+V) aquí..."></textarea>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">Nombre</label>
-                    <input type="text" id="inp-title" class="neu-input" placeholder="Ej. Hamburguesa Permitida">
-                </div>
-
-                <!-- Image Handling -->
-                <div class="p-1">
-                    <label class="text-xs font-bold text-gray-500 ml-2 mb-2 block">Imagen</label>
-                    <div class="flex gap-2 mb-2">
-                        <button type="button" onclick="setImageMode('emoji')" id="btn-mode-emoji" class="neu-btn px-4 py-2 text-xs flex-1 active">Emoji</button>
-                        <button type="button" onclick="setImageMode('url')" id="btn-mode-url" class="neu-btn px-4 py-2 text-xs flex-1">Foto/URL</button>
-                    </div>
-                    <div id="box-emoji">
-                        <input type="text" id="inp-icon" class="neu-input text-center text-2xl" placeholder="🍔">
-                    </div>
-                    <div id="box-url" class="hidden space-y-2">
-                        <input type="text" id="inp-image-url" class="neu-input text-xs" placeholder="URL o Pegar (Ctrl+V)">
-                        <div id="preview-container" class="hidden h-32 w-full rounded-xl overflow-hidden shadow-inner relative group bg-gray-200">
-                            <img id="img-preview" src="" class="w-full h-full object-cover">
-                            <button type="button" onclick="clearImage()" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><i data-lucide="x" class="w-3 h-3"></i></button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MULTI CATEGORY SELECTOR -->
-                <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2 mb-2 block">Categorías (Selecciona varias)</label>
-                    <div id="category-chips-container" class="flex flex-wrap gap-2">
-                        <!-- Chips generated by JS -->
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs font-bold text-gray-500 ml-2">Calorías</label>
-                        <input type="text" id="inp-cal" class="neu-input" placeholder="200">
-                    </div>
-                    <div class="grid grid-cols-3 gap-1 pt-6">
-                        <input type="text" id="inp-prot" class="neu-input text-center text-[10px] px-1" placeholder="Prot">
-                        <input type="text" id="inp-carb" class="neu-input text-center text-[10px] px-1" placeholder="Carb">
-                        <input type="text" id="inp-fat" class="neu-input text-center text-[10px] px-1" placeholder="Grasa">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">Ingredientes</label>
-                    <textarea id="inp-ingredients" class="neu-input" rows="3"></textarea>
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">Instrucciones</label>
-                    <textarea id="inp-instructions" class="neu-input" rows="3"></textarea>
-                </div>
-
-                <div class="flex gap-4 pt-2">
-                    <button type="button" onclick="closeForm()" class="neu-btn flex-1 text-red-400 py-3">Cancelar</button>
-                    <button type="button" onclick="saveRecipe()" id="btn-save" class="neu-btn flex-1 text-blue-500 py-3">Guardar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCRIPTS -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            signInAnonymously 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            deleteDoc, 
+            updateDoc, 
+            doc, 
+            onSnapshot, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // --- CONFIGURACIÓN PERSONAL DEL USUARIO ---
         const firebaseConfig = {
             apiKey: "AIzaSyAfn1RVDfrbNMxVRgOcgHu-8QMmGAhugik",
             authDomain: "comidassaludables.firebaseapp.com",
@@ -384,418 +55,388 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const COLLECTION_NAME = 'registros_peso';
 
-        // State
-        let currentUser = null;
-        let recipes = [];
-        let editingId = null;
-        let activeCategory = 'Todos';
-        let sortMode = 'default';
-        let searchTerm = '';
-        let selectedFormCategories = [];
-
-        // All available categories including Permitidos
-        const allCategories = ['Desayuno', 'Comida', 'Cena', 'Guarnición', 'Snack', 'Bebida', 'Postre', 'Permitidos'];
-
-        // --- AUTH ---
-        // We handle Auth silently
-        signInAnonymously(auth).then(() => {
-            console.log("Auth started");
-        }).catch((error) => {
-            console.error("Auth Error:", error);
-            updateStatus("Error de Autenticación", "red");
-        });
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                updateStatus("En línea", "green");
-                subscribeToRecipes();
-            } else {
-                updateStatus("Desconectado", "red");
-            }
-        });
-
-        function updateStatus(text, color) {
-            document.getElementById('status-text').innerText = text;
-            const dot = document.getElementById('status-dot');
-            dot.classList.remove('bg-yellow-400', 'bg-green-400', 'bg-red-400', 'animate-pulse');
-            dot.classList.add(`bg-${color}-400`);
-            if(color==='yellow') dot.classList.add('animate-pulse');
-        }
-
-        // --- FIREBASE (MODO COMPARTIDO) ---
-        function subscribeToRecipes() {
-            if (!currentUser) return;
-            // RUTA COMPARTIDA PÚBLICA (Requiere reglas abiertas)
-            const recipesRef = collection(db, 'recetas_compartidas');
-
-            onSnapshot(recipesRef, (snapshot) => {
-                recipes = snapshot.docs.map(doc => {
-                    const data = doc.data();
-                    // Compatibilidad: convertir string a array si es receta vieja
-                    let cats = data.categories || [];
-                    if (!data.categories && data.category) cats = [data.category];
-                    return { id: doc.id, ...data, categories: cats };
-                });
-                // Si la conexión fue exitosa, ocultar error si estaba visible
-                document.getElementById('permissions-error').classList.add('hidden');
-                document.getElementById('main-view').classList.remove('hidden');
-                renderApp();
-            }, (error) => {
-                console.error("Error permisos:", error);
-                if (error.code === 'permission-denied') {
-                    document.getElementById('main-view').classList.add('hidden');
-                    document.getElementById('permissions-error').classList.remove('hidden');
-                    updateStatus("Error de Permisos", "red");
-                }
-            });
-        }
-
-        // --- UI RENDER ---
-        function renderCategories() {
-            const container = document.getElementById('categories-container');
-            container.innerHTML = '';
-            
-            const tabs = ['Todos', 'Top Fit', ...allCategories];
-            
-            tabs.forEach(cat => {
-                const btn = document.createElement('button');
-                const isActive = activeCategory === cat;
-                const isPermitido = cat === 'Permitidos';
-                
-                let iconHtml = '';
-                if(cat==='Top Fit') iconHtml = '<i data-lucide="trophy" class="w-4 h-4"></i>';
-                if(cat==='Permitidos') iconHtml = '<i data-lucide="star" class="w-4 h-4"></i>';
-
-                btn.className = `min-w-[100px] snap-start px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-sm whitespace-nowrap border-none cursor-pointer ${
-                    isActive 
-                    ? (isPermitido ? 'bg-yellow-100 text-yellow-600 shadow-[inset_4px_4px_8px_#d69e2e,inset_-4px_-4px_8px_#ffffff]' : 'bg-[#e0e5ec] text-blue-500 shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff]') 
-                    : 'bg-[#e0e5ec] text-gray-600 shadow-[5px_5px_10px_#b8b9be,-5px_-5px_10px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff]'
-                }`;
-                btn.innerHTML = `${iconHtml}${cat}`;
-                btn.onclick = () => { activeCategory = cat; renderApp(); renderCategories(); };
-                container.appendChild(btn);
-            });
-            lucide.createIcons();
-        }
-
-        function renderApp() {
-            document.getElementById('recipe-count').innerText = `${recipes.length} Recetas Compartidas`;
-
-            let filtered = recipes.filter(r => {
-                const matchSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
-                if (activeCategory === 'Top Fit') return true; 
-                if (activeCategory === 'Todos') return matchSearch;
-                
-                const hasCat = r.categories && r.categories.includes(activeCategory);
-                return hasCat && matchSearch;
-            });
-
-            const getVal = (v) => parseFloat(v) || 0;
-            if (sortMode === 'minCal') filtered.sort((a,b) => getVal(a.calories) - getVal(b.calories));
-            else if (sortMode === 'maxProt') filtered.sort((a,b) => getVal(b.nutrition?.protein) - getVal(a.nutrition?.protein));
-            else if (sortMode === 'minCarbs') filtered.sort((a,b) => getVal(a.nutrition?.carbs) - getVal(b.nutrition?.carbs));
-
-            const grid = document.getElementById('recipe-grid');
-            grid.innerHTML = '';
-
-            if (activeCategory === 'Top Fit') {
-                renderTopFit(grid);
-            } else {
-                if (filtered.length === 0) {
-                    document.getElementById('empty-state').classList.remove('hidden');
-                    document.getElementById('empty-state').classList.add('flex');
-                } else {
-                    document.getElementById('empty-state').classList.add('hidden');
-                    document.getElementById('empty-state').classList.remove('flex');
-                    
-                    filtered.forEach(r => {
-                        const card = document.createElement('div');
-                        card.className = "neu-flat p-5 rounded-3xl cursor-pointer hover:scale-[1.02] transition-transform relative overflow-hidden group";
-                        card.onclick = () => openDetail(r);
-                        
-                        let imgContent = `<span class="text-6xl drop-shadow-sm">${r.icon || '🍲'}</span>`;
-                        if (r.imageType === 'url' && r.imageUrl) {
-                            imgContent = `<img src="${r.imageUrl}" class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700">`;
-                        }
-
-                        const catString = (r.categories || []).join(' • ');
-
-                        card.innerHTML = `
-                            <div class="h-40 rounded-2xl bg-gradient-to-br ${r.imageColor || 'from-gray-100 to-gray-200'} flex items-center justify-center mb-4 overflow-hidden shadow-inner">
-                                ${imgContent}
-                            </div>
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-[10px] font-bold text-blue-500 uppercase tracking-wider truncate max-w-[70%]">${catString}</span>
-                                <div class="flex items-center text-orange-500 text-xs font-bold gap-1">
-                                    <i data-lucide="flame" class="w-3 h-3 fill-current"></i> ${r.calories || 0}
-                                </div>
-                            </div>
-                            <h3 class="text-lg font-bold text-gray-800 leading-tight">${r.title}</h3>
-                        `;
-                        grid.appendChild(card);
-                    });
-                }
-            }
-            lucide.createIcons();
-        }
-
-        function renderTopFit(container) {
-            const getVal = (v) => parseFloat(v) || 0;
-            const lowCal = [...recipes].sort((a,b) => getVal(a.calories) - getVal(b.calories)).slice(0,5);
-            const highProt = [...recipes].sort((a,b) => getVal(b.nutrition?.protein) - getVal(a.nutrition?.protein)).slice(0,5);
-
-            const sectionHTML = (title, items, icon, color) => `
-                <div class="col-span-full mb-4">
-                    <h3 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
-                        <i data-lucide="${icon}" class="${color}"></i> ${title}
-                    </h3>
-                    <div class="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
-                        ${items.map(r => `
-                            <div onclick="window.openDetailById('${r.id}')" class="min-w-[180px] neu-flat p-4 rounded-2xl cursor-pointer flex-shrink-0">
-                                <div class="text-4xl mb-2 text-center">${r.imageType === 'url' ? '📷' : r.icon}</div>
-                                <h4 class="font-bold text-gray-700 text-sm truncate">${r.title}</h4>
-                                <div class="text-xs font-bold mt-1 ${color}">${(r.categories||[]).slice(0,2).join(', ')}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            container.innerHTML = sectionHTML("Ligero", lowCal, "leaf", "text-green-500") + sectionHTML("Proteico", highProt, "activity", "text-blue-500");
-        }
-
-        // --- FORM LOGIC ---
-        window.openForm = (r = null) => {
-            const modal = document.getElementById('modal-form');
-            modal.classList.remove('hidden');
-            editingId = r ? r.id : null;
-            document.getElementById('form-title').innerText = r ? 'Editar Receta' : 'Nueva Receta';
-
-            document.getElementById('magic-container').classList.remove('ocr-processing');
-            document.getElementById('ocr-status').classList.add('hidden');
-            document.getElementById('magic-input').value = "";
-
-            document.getElementById('inp-title').value = r?.title || '';
-            document.getElementById('inp-cal').value = r?.calories || '';
-            document.getElementById('inp-icon').value = r?.icon || '🥗';
-            document.getElementById('inp-image-url').value = r?.imageUrl || '';
-            document.getElementById('inp-prot').value = r?.nutrition?.protein || '';
-            document.getElementById('inp-carb').value = r?.nutrition?.carbs || '';
-            document.getElementById('inp-fat').value = r?.nutrition?.fat || '';
-            document.getElementById('inp-ingredients').value = r?.ingredients ? r.ingredients.join('\n') : '';
-            document.getElementById('inp-instructions').value = r?.instructions ? r.instructions.join('\n') : '';
-            
-            if (r?.imageType === 'url') setImageMode('url');
-            else setImageMode('emoji');
-            
-            if (r?.imageUrl) {
-                document.getElementById('img-preview').src = r.imageUrl;
-                document.getElementById('preview-container').classList.remove('hidden');
-            } else {
-                document.getElementById('preview-container').classList.add('hidden');
-            }
-
-            selectedFormCategories = r?.categories ? [...r.categories] : ['Comida'];
-            renderFormCategories();
+        // Alias para createElement
+        const h = React.createElement;
+        
+        // Iconos simplificados para asegurar sintaxis
+        const Icons = {
+            Scale: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" }), h("path", { d: "m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" }), h("path", { d: "M7 21h10" }), h("path", { d: "M12 3v18" }), h("path", { d: "M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" })),
+            Calendar: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", ry: "2" }), h("line", { x1: "16", x2: "16", y1: "2", y2: "6" }), h("line", { x1: "8", x2: "8", y1: "2", y2: "6" }), h("line", { x1: "3", x2: "21", y1: "10", y2: "10" })),
+            Activity: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M22 12h-4l-3 9L9 3l-3 9H2" })),
+            Plus: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M5 12h14" }), h("path", { d: "M12 5v14" })),
+            Minus: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M5 12h14" })),
+            Trash2: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M3 6h18" }), h("path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }), h("path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" }), h("line", { x1: "10", x2: "10", y1: "11", y2: "17" }), h("line", { x1: "14", x2: "14", y1: "11", y2: "17" })),
+            Edit2: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" })),
+            X: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M18 6 6 18" }), h("path", { d: "m6 6 12 12" })),
+            TrendingUp: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }), h("polyline", { points: "16 7 22 7 22 13" })),
+            TrendingDown: (props) => h("svg", { ...props, xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, h("polyline", { points: "22 17 13.5 8.5 8.5 13.5 2 7" }), h("polyline", { points: "16 17 22 17 22 11" }))
         };
 
-        function renderFormCategories() {
-            const container = document.getElementById('category-chips-container');
-            container.innerHTML = '';
-            allCategories.forEach(cat => {
-                const chip = document.createElement('div');
-                const isSelected = selectedFormCategories.includes(cat);
-                chip.className = `neu-chip ${isSelected ? 'selected' : ''}`;
-                chip.innerText = cat;
-                chip.onclick = () => {
-                    if (isSelected) selectedFormCategories = selectedFormCategories.filter(c => c !== cat);
-                    else selectedFormCategories.push(cat);
-                    renderFormCategories();
-                };
-                container.appendChild(chip);
-            });
-        }
-
-        window.saveRecipe = async () => {
-            const btn = document.getElementById('btn-save');
-            btn.innerText = "Guardando...";
+        function App() {
+            const [user, setUser] = React.useState(null);
+            const [logs, setLogs] = React.useState([]);
             
-            if(selectedFormCategories.length === 0) selectedFormCategories.push('Comida');
+            const [weightInput, setWeightInput] = React.useState('');
+            const [dateInput, setDateInput] = React.useState(new Date().toISOString().split('T')[0]);
+            const [isSubmitting, setIsSubmitting] = React.useState(false);
+            
+            const [editingId, setEditingId] = React.useState(null);
+            const [deleteModal, setDeleteModal] = React.useState({ show: false, id: null });
 
-            const recipeData = {
-                title: document.getElementById('inp-title').value || "Sin nombre",
-                categories: selectedFormCategories, 
-                calories: document.getElementById('inp-cal').value,
-                icon: document.getElementById('inp-icon').value,
-                imageType: document.getElementById('btn-mode-url').classList.contains('active') ? 'url' : 'emoji',
-                imageUrl: document.getElementById('inp-image-url').value,
-                imageColor: "from-blue-200 to-indigo-200", 
-                nutrition: {
-                    protein: document.getElementById('inp-prot').value,
-                    carbs: document.getElementById('inp-carb').value,
-                    fat: document.getElementById('inp-fat').value,
-                },
-                ingredients: document.getElementById('inp-ingredients').value.split('\n').filter(Boolean),
-                instructions: document.getElementById('inp-instructions').value.split('\n').filter(Boolean),
-                createdAt: Date.now()
+            const [selectedProfile, setSelectedProfile] = React.useState('Lucas Abraham');
+            const [isAddingProfile, setIsAddingProfile] = React.useState(false);
+            const [newProfileName, setNewProfileName] = React.useState('');
+
+            React.useEffect(() => {
+                signInAnonymously(auth).catch(console.error);
+                return onAuthStateChanged(auth, setUser);
+            }, []);
+
+            React.useEffect(() => {
+                const logsCollection = collection(db, COLLECTION_NAME);
+                const unsubscribe = onSnapshot(logsCollection, (snapshot) => {
+                    const logsData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setLogs(logsData);
+                }, console.error);
+                return () => unsubscribe();
+            }, [user]);
+
+            const availableProfiles = React.useMemo(() => {
+                const profiles = new Set(['Lucas Abraham', 'Carolina Sosa']); 
+                logs.forEach(log => { if (log.profile) profiles.add(log.profile); });
+                if (selectedProfile) profiles.add(selectedProfile);
+                return Array.from(profiles).sort();
+            }, [logs, selectedProfile]);
+
+            const filteredSortedLogs = React.useMemo(() => {
+                return logs
+                    .filter(log => (log.profile) === selectedProfile)
+                    .sort((a, b) => {
+                        if (a.date < b.date) return 1;
+                        if (a.date > b.date) return -1;
+                        return 0;
+                    });
+            }, [logs, selectedProfile]);
+
+            const getTheme = (profile) => {
+                if (profile === 'Lucas Abraham') {
+                    return {
+                        gradientText: 'from-blue-600 to-emerald-500', 
+                        gradientBg: 'from-blue-500 to-emerald-500',
+                        bgPage: 'bg-gradient-to-br from-blue-50 to-emerald-50',
+                        buttonShadow: 'shadow-emerald-500/30',
+                        iconColor: 'text-emerald-500',
+                        accentBorder: 'border-emerald-200'
+                    };
+                } else if (profile === 'Carolina Sosa') {
+                    return {
+                        gradientText: 'from-pink-500 to-orange-400', 
+                        gradientBg: 'from-pink-500 to-orange-400',
+                        bgPage: 'bg-gradient-to-br from-pink-50 to-orange-50',
+                        buttonShadow: 'shadow-pink-500/30',
+                        iconColor: 'text-pink-500',
+                        accentBorder: 'border-pink-200'
+                    };
+                }
+                return {
+                    gradientText: 'from-slate-600 to-slate-800',
+                    gradientBg: 'from-slate-600 to-slate-800',
+                    bgPage: 'bg-slate-50',
+                    buttonShadow: 'shadow-slate-500/30',
+                    iconColor: 'text-slate-500',
+                    accentBorder: 'border-slate-200'
+                };
             };
 
-            try {
-                // RUTA COMPARTIDA
-                const recipesRef = collection(db, 'recetas_compartidas');
-                if (editingId) await updateDoc(doc(recipesRef, editingId), recipeData);
-                else await addDoc(recipesRef, recipeData);
-                window.closeForm();
-            } catch (error) {
-                console.error(error);
-                alert("Error guardando: " + error.code);
-            } finally {
-                btn.innerText = "Guardar";
-            }
-        };
+            const currentTheme = getTheme(selectedProfile);
 
-        // --- HELPERS ---
-        window.closeForm = () => document.getElementById('modal-form').classList.add('hidden');
-        window.openDetailById = (id) => { const r = recipes.find(item => item.id === id); if(r) openDetail(r); };
-        window.deleteCurrentRecipe = async () => {
-            if(!editingId || !confirm("¿Borrar para ambos?")) return;
-            try { await deleteDoc(doc(db, 'recetas_compartidas', editingId)); window.closeDetail(); } catch(e){ alert(e.message); }
-        };
-        window.closeDetail = () => { document.getElementById('detail-view').classList.add('hidden'); document.getElementById('main-view').classList.remove('hidden'); editingId=null; };
-        
-        window.openDetail = (r) => {
-            editingId = r.id; 
-            document.getElementById('main-view').classList.add('hidden');
-            document.getElementById('detail-view').classList.remove('hidden');
-            document.getElementById('detail-title').innerText = r.title;
-            document.getElementById('detail-cal').innerText = r.calories;
-            document.getElementById('detail-prot').innerText = r.nutrition?.protein || '-';
-            document.getElementById('detail-carb').innerText = r.nutrition?.carbs || '-';
-            document.getElementById('detail-fat').innerText = r.nutrition?.fat || '-';
-            
-            const catContainer = document.getElementById('detail-categories');
-            catContainer.innerHTML = '';
-            (r.categories || []).forEach(cat => {
-                const badge = document.createElement('span');
-                badge.className = "text-[10px] md:text-xs font-bold px-2 py-1 rounded-full bg-[#e0e5ec] shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] text-blue-500";
-                if(cat === 'Permitidos') badge.className = badge.className.replace('text-blue-500', 'text-yellow-600');
-                badge.innerText = cat;
-                catContainer.appendChild(badge);
-            });
+            const handleSaveLog = async (e) => {
+                e.preventDefault();
+                if (!weightInput || !dateInput) return;
 
-            const cover = document.getElementById('detail-cover');
-            cover.className = `h-64 w-full bg-gradient-to-r ${r.imageColor||'from-gray-200 to-gray-300'} flex items-center justify-center relative overflow-hidden`;
-            if(r.imageType === 'url' && r.imageUrl) cover.innerHTML = `<img src="${r.imageUrl}" class="w-full h-full object-cover">`;
-            else cover.innerHTML = `<span class="text-9xl drop-shadow-md cursor-default">${r.icon||'🍲'}</span>`;
-
-            document.getElementById('detail-ingredients').innerHTML = (r.ingredients||[]).map(i=>`<li class="flex gap-3"><span class="w-2 h-2 mt-1.5 rounded-full bg-blue-400"></span>${i}</li>`).join('');
-            document.getElementById('detail-instructions').innerHTML = (r.instructions||[]).map((s,i)=>`<div class="flex gap-4"><div class="flex-shrink-0 w-6 h-6 rounded-full bg-[#e0e5ec] shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] flex items-center justify-center font-bold text-xs text-emerald-600">${i+1}</div><p>${s}</p></div>`).join('');
-            
-            document.getElementById('btn-edit-recipe').onclick = () => openForm(r);
-            document.getElementById('btn-delete-recipe').onclick = deleteCurrentRecipe;
-            lucide.createIcons();
-        };
-
-        // --- GLOBAL HANDLERS ---
-        window.setImageMode = (mode) => {
-            const btnEmoji = document.getElementById('btn-mode-emoji');
-            const btnUrl = document.getElementById('btn-mode-url');
-            if(mode === 'emoji') {
-                btnEmoji.classList.add('active','text-blue-500','shadow-inner'); btnUrl.classList.remove('active','text-blue-500','shadow-inner');
-                document.getElementById('box-emoji').classList.remove('hidden'); document.getElementById('box-url').classList.add('hidden');
-            } else {
-                btnUrl.classList.add('active','text-blue-500','shadow-inner'); btnEmoji.classList.remove('active','text-blue-500','shadow-inner');
-                document.getElementById('box-url').classList.remove('hidden'); document.getElementById('box-emoji').classList.add('hidden');
-            }
-        };
-        window.clearImage = () => { document.getElementById('inp-image-url').value = ''; document.getElementById('preview-container').classList.add('hidden'); };
-        window.setSort = (m) => { sortMode = m; document.getElementById('sort-menu').classList.add('hidden'); renderApp(); };
-        
-        // Listeners
-        document.getElementById('search-input').addEventListener('input', (e) => { searchTerm = e.target.value; renderApp(); });
-        document.getElementById('btn-sort-toggle').onclick = () => document.getElementById('sort-menu').classList.toggle('hidden');
-        document.getElementById('inp-image-url').addEventListener('input', (e) => { if(e.target.value) { document.getElementById('img-preview').src = e.target.value; document.getElementById('preview-container').classList.remove('hidden'); }});
-        
-        // --- AUTO DETECT CATEGORY FROM TEXT ---
-        function detectCategoriesFromText(text) {
-            const lower = text.toLowerCase();
-            const cats = [];
-            if (lower.includes('desayuno') || lower.includes('avena')) cats.push('Desayuno');
-            if (lower.includes('cena') || lower.includes('ligero')) cats.push('Cena');
-            if (lower.includes('snack') || lower.includes('barrita')) cats.push('Snack');
-            if (lower.includes('batido')) cats.push('Bebida');
-            if (lower.includes('postre') || lower.includes('chocolate')) cats.push('Postre');
-            if (lower.includes('pizza') || lower.includes('hamburguesa') || lower.includes('permitido')) cats.push('Permitidos');
-            if (cats.length === 0) cats.push('Comida');
-            return cats;
-        }
-
-        // --- PASTE HANDLERS ---
-        document.getElementById('magic-input').addEventListener('paste', async (e) => {
-            e.preventDefault();
-            const items = (e.clipboardData || window.clipboardData).items;
-            let blob = null;
-            for (let i = 0; i < items.length; i++) { if (items[i].type.indexOf('image') !== -1) { blob = items[i].getAsFile(); break; } }
-
-            if (blob) {
-                const container = document.getElementById('magic-container');
-                const status = document.getElementById('ocr-status');
-                container.classList.add('ocr-processing');
-                status.innerText = "⏳ Leyendo imagen...";
-                status.classList.remove('hidden');
-                document.getElementById('magic-input').value = "Procesando imagen...";
-                
+                setIsSubmitting(true);
                 try {
-                    const res = await Tesseract.recognize(blob, 'spa');
-                    const text = res.data.text;
-                    document.getElementById('magic-input').value = text;
-                    processText(text);
-                    status.innerText = "✅ Listo";
-                } catch(err) { console.error(err); status.innerText = "❌ Error"; }
-                finally { container.classList.remove('ocr-processing'); }
-            } else {
-                const text = e.clipboardData.getData('text');
-                document.getElementById('magic-input').value = text;
-                processText(text);
-            }
-        });
+                    const collectionRef = collection(db, COLLECTION_NAME);
+                    if (editingId) {
+                        const logRef = doc(db, COLLECTION_NAME, editingId);
+                        await updateDoc(logRef, {
+                            weight: parseFloat(weightInput),
+                            date: dateInput,
+                            profile: selectedProfile, 
+                            updatedAt: serverTimestamp()
+                        });
+                        setEditingId(null);
+                    } else {
+                        await addDoc(collectionRef, {
+                            weight: parseFloat(weightInput),
+                            date: dateInput,
+                            profile: selectedProfile,
+                            createdAt: serverTimestamp()
+                        });
+                    }
+                    setWeightInput(''); 
+                } catch (error) {
+                    console.error("Error al guardar:", error);
+                    alert("Error al guardar en la base de datos.");
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
 
-        function processText(text) {
-            const lines = text.split('\n').filter(l => l.trim() !== '');
-            let ings=[], inst=[], section=0; 
-            lines.forEach(line => {
-                const l = line.toLowerCase();
-                if(l.includes('ingrediente')) { section=1; return; }
-                if(l.includes('instrucc') || l.includes('elabora') || l.includes('prepara')) { section=2; return; }
-                if(section===1) ings.push(line); else if(section===2) inst.push(line); else { if(lines.length<6) ings.push(line); else if(!document.getElementById('inp-title').value) document.getElementById('inp-title').value = line; }
-            });
-            document.getElementById('inp-ingredients').value = ings.join('\n');
-            document.getElementById('inp-instructions').value = inst.join('\n');
-            
-            selectedFormCategories = detectCategoriesFromText(text);
-            renderFormCategories();
+            const startEditing = (log) => {
+                setWeightInput(log.weight);
+                setDateInput(log.date);
+                setEditingId(log.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const cancelEditing = () => {
+                setEditingId(null);
+                setWeightInput('');
+                setDateInput(new Date().toISOString().split('T')[0]);
+            };
+
+            const confirmDelete = (id) => {
+                setDeleteModal({ show: true, id });
+            };
+
+            const executeDelete = async () => {
+                if (!deleteModal.id) return;
+                try {
+                    await deleteDoc(doc(db, COLLECTION_NAME, deleteModal.id));
+                    if (editingId === deleteModal.id) cancelEditing();
+                } catch (error) {
+                    console.error("Error al eliminar:", error);
+                } finally {
+                    setDeleteModal({ show: false, id: null });
+                }
+            };
+
+            const getDifference = (currentIndex, currentWeight) => {
+                if (currentIndex === filteredSortedLogs.length - 1) return null; 
+                const previousLog = filteredSortedLogs[currentIndex + 1];
+                return currentWeight - previousLog.weight;
+            };
+
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                const [year, month, day] = dateString.split('-').map(Number);
+                const date = new Date(year, month - 1, day); 
+                return date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+            };
+
+            const handleCreateProfile = (e) => {
+                e.preventDefault();
+                if (newProfileName.trim()) {
+                    setSelectedProfile(newProfileName.trim());
+                    setNewProfileName('');
+                    setIsAddingProfile(false);
+                }
+            };
+
+            // --- Componentes UI ---
+
+            const renderModal = deleteModal.show ? h("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4" },
+                h("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm animate-fadeIn", onClick: () => setDeleteModal({ show: false, id: null }) }),
+                h("div", { className: "bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative z-10 animate-scaleUp" },
+                    h("h3", { className: "text-lg font-bold text-slate-800 mb-2" }, "¿Estás seguro?"),
+                    h("p", { className: "text-slate-500 mb-6" }, "Esta acción eliminará el registro permanentemente."),
+                    h("div", { className: "flex gap-3 justify-end" },
+                        h("button", { 
+                            onClick: () => setDeleteModal({ show: false, id: null }),
+                            className: "px-4 py-2 rounded-xl text-slate-500 font-semibold hover:bg-slate-100 transition-colors"
+                        }, "Cancelar"),
+                        h("button", { 
+                            onClick: executeDelete,
+                            className: "px-4 py-2 rounded-xl bg-rose-500 text-white font-semibold hover:bg-rose-600 shadow-lg shadow-rose-500/20 transition-all active:scale-95"
+                        }, "Eliminar")
+                    )
+                )
+            ) : null;
+
+            const renderHeader = h("header", { className: "w-full max-w-lg mb-6 text-center relative z-10" },
+                h("div", { className: `inline-flex items-center justify-center p-3 sm:p-4 bg-gradient-to-tr ${currentTheme.gradientBg} rounded-2xl shadow-xl mb-3 transform rotate-3 hover:rotate-0 transition-all duration-500` },
+                    h(Icons.Scale, { className: "w-8 h-8 sm:w-10 sm:h-10 text-white" })
+                ),
+                h("h1", { className: `text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${currentTheme.gradientText} tracking-tight mb-1 transition-all duration-500` }, "Control de Peso")
+            );
+
+            const renderProfileSelector = h("div", { className: "w-full max-w-lg mb-6" },
+                h("div", { className: "flex flex-wrap gap-2 justify-center items-center" },
+                    availableProfiles.map(profile => {
+                        const isSelected = selectedProfile === profile;
+                        const profileTheme = getTheme(profile);
+                        return h("button", {
+                            key: profile,
+                            onClick: () => { setSelectedProfile(profile); cancelEditing(); },
+                            className: `px-4 py-2 sm:px-6 sm:py-2 rounded-full text-sm sm:text-lg font-bold transition-all shadow-sm border ${isSelected ? `bg-gradient-to-r ${profileTheme.gradientBg} text-white shadow-lg scale-105 border-transparent` : 'bg-white text-slate-500 hover:bg-slate-50 border-slate-200'}`
+                        }, profile);
+                    }),
+                    !isAddingProfile ? 
+                        h("button", { 
+                            onClick: () => setIsAddingProfile(true),
+                            className: "p-2 rounded-full bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 transition-colors shadow-sm active:scale-95",
+                            title: "Agregar persona"
+                        }, h(Icons.Plus, { className: "w-5 h-5" })) 
+                    :
+                        h("form", { onSubmit: handleCreateProfile, className: "flex items-center gap-2 bg-white p-1 pl-3 rounded-full shadow-md animate-in fade-in zoom-in border border-slate-200" },
+                            h("input", { 
+                                autoFocus: true,
+                                type: "text", 
+                                placeholder: "Nombre...", 
+                                className: "w-24 outline-none text-sm font-semibold text-slate-700 bg-transparent",
+                                value: newProfileName,
+                                onChange: (e) => setNewProfileName(e.target.value)
+                            }),
+                            h("button", { type: "submit", className: "p-1.5 rounded-full text-white bg-slate-800" }, h(Icons.Plus, { className: "w-4 h-4" })),
+                            h("button", { type: "button", onClick: () => setIsAddingProfile(false), className: "p-1.5 text-slate-400 hover:text-red-400" }, h(Icons.Minus, { className: "w-4 h-4" }))
+                        )
+                )
+            );
+
+            const renderForm = h("div", { className: `w-full max-w-lg bg-white/90 backdrop-blur-md rounded-3xl shadow-xl border ${editingId ? 'border-amber-300 ring-2 ring-amber-100' : 'border-white/50'} p-5 sm:p-6 mb-8 transition-all duration-300` },
+                h("div", { className: "flex justify-between items-center mb-4" },
+                    h("div", { className: "text-left" },
+                        h("span", { className: "text-xs font-bold text-slate-400 uppercase tracking-widest block" }, editingId ? 'Editando registro de:' : 'Nuevo registro para:'),
+                        h("div", { className: `text-lg font-black text-transparent bg-clip-text bg-gradient-to-r ${currentTheme.gradientText}` }, selectedProfile)
+                    ),
+                    editingId ? h("button", { 
+                        onClick: cancelEditing,
+                        className: "text-xs font-bold text-slate-400 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors"
+                    }, h(Icons.X, { className: "w-3 h-3" }), " Cancelar") : null
+                ),
+                h("form", { onSubmit: handleSaveLog, className: "flex flex-col gap-4" },
+                    h("div", { className: "flex gap-3" },
+                        h("div", { className: "flex-1" },
+                            h("label", { className: "block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1" }, "Fecha"),
+                            h("div", { className: "relative group" },
+                                h("div", { className: `absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${currentTheme.iconColor}` }, h(Icons.Calendar, null)),
+                                h("input", { 
+                                    type: "date", 
+                                    required: true,
+                                    value: dateInput,
+                                    onChange: (e) => setDateInput(e.target.value),
+                                    className: "w-full pl-12 pr-2 py-3 sm:py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-slate-300 focus:ring-0 text-base sm:text-lg font-semibold transition-all text-slate-700 appearance-none"
+                                })
+                            )
+                        ),
+                        h("div", { className: "flex-1" },
+                            h("label", { className: "block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1" }, "Peso"),
+                            h("div", { className: "relative group" },
+                                h("div", { className: `absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${currentTheme.iconColor}` }, h(Icons.Activity, null)),
+                                h("input", { 
+                                    type: "number", 
+                                    step: "0.1", 
+                                    inputMode: "decimal",
+                                    required: true,
+                                    placeholder: "0.0",
+                                    value: weightInput,
+                                    onChange: (e) => setWeightInput(e.target.value),
+                                    className: "w-full pl-12 pr-4 py-3 sm:py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-slate-300 focus:ring-0 text-base sm:text-lg font-semibold transition-all text-slate-700"
+                                })
+                            )
+                        )
+                    ),
+                    h("button", { 
+                        type: "submit", 
+                        disabled: isSubmitting,
+                        className: `w-full bg-gradient-to-r ${editingId ? 'from-amber-400 to-orange-500' : currentTheme.gradientBg} text-white font-bold text-lg py-3 sm:py-4 rounded-2xl transition-all shadow-lg transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:opacity-90 touch-manipulation`
+                    }, isSubmitting ? 'Guardando...' : (editingId ? 
+                        h(React.Fragment, null, h(Icons.Edit2, { className: "w-5 h-5" }), " Actualizar Registro") : 
+                        h(React.Fragment, null, h(Icons.Plus, { className: "w-6 h-6" }), " Guardar Registro"))
+                    )
+                )
+            );
+
+            const renderHistory = h("div", { className: "w-full max-w-lg pb-10" },
+                h("h2", { className: "text-xl font-black text-slate-700 mb-4 px-4 flex items-center gap-2" },
+                    h(Icons.TrendingUp, { className: `w-6 h-6 ${currentTheme.iconColor}` }),
+                    "Historial"
+                ),
+                (filteredSortedLogs.length === 0 ? 
+                    h("div", { className: "text-center py-16 bg-white/60 rounded-3xl border-2 border-dashed border-slate-200 mx-2" },
+                        h("p", { className: "text-slate-400 font-medium text-lg" }, "Sin registros"),
+                        h("p", { className: "text-slate-400/70" }, "¡Empieza hoy!")
+                    )
+                :
+                    h("div", { className: "bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mx-1 sm:mx-0" },
+                        h("div", { className: "grid grid-cols-12 bg-slate-50 p-4 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider" },
+                            h("div", { className: "col-span-4 pl-1" }, "Fecha"),
+                            h("div", { className: "col-span-4 text-center" }, "Peso"),
+                            h("div", { className: "col-span-4 text-right pr-2" }, "Var.")
+                        ),
+                        h("div", { className: "divide-y divide-slate-50" },
+                            filteredSortedLogs.map((log, index) => {
+                                const diff = getDifference(index, log.weight);
+                                const isGain = diff > 0;
+                                const isLoss = diff < 0;
+                                const isNeutral = diff === 0;
+                                const isEditing = editingId === log.id;
+
+                                return h("div", { 
+                                    key: log.id,
+                                    className: `grid grid-cols-12 items-center p-4 sm:p-5 transition-colors relative ${isEditing ? 'bg-amber-50' : 'hover:bg-slate-50'}`
+                                },
+                                    // Fecha
+                                    h("div", { className: "col-span-4 text-slate-500 font-semibold text-sm pl-1 leading-tight" }, formatDate(log.date)),
+                                    
+                                    // Peso
+                                    h("div", { className: "col-span-4 text-center" },
+                                        h("span", { className: `text-2xl sm:text-3xl font-black tracking-tight ${isEditing ? 'text-amber-600' : 'text-slate-700'}` }, log.weight)
+                                    ),
+
+                                    // Variación y Acciones
+                                    h("div", { className: "col-span-4 flex justify-end items-center gap-1 sm:gap-2 pr-1" },
+                                        (diff !== null ? 
+                                            h("div", { className: `flex items-center gap-0.5 sm:gap-1 text-lg sm:text-xl font-black ${isLoss ? 'text-emerald-500' : isGain ? 'text-rose-500' : 'text-slate-300'}` },
+                                                isLoss && h(Icons.TrendingDown, { className: "w-4 h-4 sm:w-6 sm:h-6" }),
+                                                isGain && h(Icons.TrendingUp, { className: "w-4 h-4 sm:w-6 sm:h-6" }),
+                                                isNeutral && h(Icons.Minus, { className: "w-4 h-4 sm:w-5 sm:h-5" }),
+                                                h("span", { className: "hidden sm:inline" }, Math.abs(diff).toFixed(1)),
+                                                h("span", { className: "sm:hidden text-base" }, Math.abs(diff).toFixed(1))
+                                            )
+                                        :
+                                            h("span", { className: "text-slate-300 font-bold text-xl" }, "-")),
+                                        
+                                        // Botones
+                                        h("div", { className: "flex gap-0 sm:gap-1 ml-1 sm:ml-2" },
+                                            h("button", { 
+                                                onClick: () => startEditing(log),
+                                                className: `p-2 rounded-full transition-colors active:scale-90 ${isEditing ? 'bg-amber-200 text-amber-700' : 'text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`,
+                                                title: "Editar"
+                                            }, h(Icons.Edit2, { className: "w-4 h-4 sm:w-5 sm:h-5" })),
+                                            
+                                            h("button", { 
+                                                onClick: (e) => { e.stopPropagation(); confirmDelete(log.id); },
+                                                className: "p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors active:scale-90",
+                                                title: "Eliminar"
+                                            }, h(Icons.Trash2, { className: "w-4 h-4 sm:w-5 sm:h-5" }))
+                                        )
+                                    )
+                                );
+                            })
+                        )
+                    )
+                )
+            );
+
+            // Renderizado Final Limpio
+            return h("div", { className: `min-h-screen font-sans text-slate-800 flex flex-col items-center py-6 px-4 transition-colors duration-500 ${currentTheme.bgPage}` },
+                renderModal,
+                renderHeader,
+                renderProfileSelector,
+                renderForm,
+                renderHistory
+            );
         }
 
-        document.getElementById('inp-image-url').addEventListener('paste', (e) => {
-            const items = (e.clipboardData).items;
-            for (let i=0; i<items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    const blob = items[i].getAsFile();
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                        document.getElementById('inp-image-url').value = evt.target.result;
-                        document.getElementById('img-preview').src = evt.target.result;
-                        document.getElementById('preview-container').classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(blob);
-                    e.preventDefault();
-                }
-            }
-        });
-
-        renderCategories();
-        lucide.createIcons();
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(h(App));
     </script>
 </body>
 </html>
